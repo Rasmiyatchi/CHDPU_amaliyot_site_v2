@@ -387,7 +387,9 @@ export type ContractCreate = {
   organization_id: UUID;
   academic_year_id: UUID;
   practice_type_id: UUID;
-  assignment_ids: UUID[];
+  assignment_ids?: UUID[];
+  student_ids?: UUID[];
+  group_ids?: UUID[];
   start_date: ISODate;
   end_date: ISODate;
   notes?: string | null;

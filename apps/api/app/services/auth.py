@@ -27,6 +27,50 @@ def _client_meta(request: Request) -> tuple[str | None, str | None]:
     return ua, ip
 
 
+def _extract_device_signature(ua: str | None) -> tuple[str, str]:
+    if not ua:
+        return ("unknown", "unknown")
+    u = ua.lower()
+
+    # OS family
+    if "iphone" in u or "ipad" in u or "ipod" in u:
+        os_family = "ios"
+    elif "android" in u:
+        os_family = "android"
+    elif "windows" in u:
+        os_family = "windows"
+    elif "macintosh" in u or "mac os" in u:
+        os_family = "macos"
+    elif "linux" in u:
+        os_family = "linux"
+    else:
+        os_family = "other"
+
+    # Browser family
+    if "edg/" in u or "edge/" in u:
+        browser = "edge"
+    elif "chrome/" in u or "crios/" in u:
+        browser = "chrome"
+    elif "firefox/" in u or "fxios/" in u:
+        browser = "firefox"
+    elif "safari/" in u and "chrome" not in u:
+        browser = "safari"
+    elif "opera" in u or "opr/" in u:
+        browser = "opera"
+    else:
+        browser = "other"
+
+    return os_family, browser
+
+
+def _is_same_device_signature(old_ua: str | None, new_ua: str | None) -> bool:
+    old_os, old_browser = _extract_device_signature(old_ua)
+    new_os, new_browser = _extract_device_signature(new_ua)
+    if old_os == "unknown" or new_os == "unknown":
+        return False
+    return old_os == new_os and old_browser == new_browser
+
+
 async def enforce_device_binding(
     db: AsyncSession, user: User, device_id: str | None, request: Request
 ) -> None:
@@ -34,6 +78,7 @@ async def enforce_device_binding(
 
     - Birinchi kirish: qurilma bog'lanadi (saqlanadi).
     - Bog'langan qurilma bilan: o'tadi.
+    - Bir xil qurilma/brauzerda kesh tozalansa: avtomatik yangilanadi (soxta bloklash yo'q).
     - Boshqa qurilma: admin/super_admin'ga xabar yuboriladi va 403 qaytariladi.
 
     Faqat talaba rollarga tegishli. device_id berilmasa — bog'lash o'tkazib yuboriladi.
@@ -53,6 +98,14 @@ async def enforce_device_binding(
         return
 
     if user.device_id == device_id:
+        return
+
+    # Kesh tozalangan bir xil brauzer/qurilmani aniqlash (Smart auto-update)
+    if _is_same_device_signature(user.device_label, ua):
+        user.device_id = device_id
+        user.device_label = (ua or "")[:255] or None
+        user.device_bound_at = datetime.now(UTC)
+        await db.commit()
         return
 
     # Boshqa qurilma — adminlarga xabar + blok

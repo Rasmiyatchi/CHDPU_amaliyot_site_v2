@@ -15,7 +15,7 @@ from sqlalchemy.orm import aliased
 
 from app.models.academic import AcademicYear, Direction, Faculty, Group
 from app.models.contract import Contract
-from app.models.enums import ContractStatus, ContractTemplate
+from app.models.enums import AssignmentStatus, ContractStatus, ContractTemplate
 from app.models.organization import Organization
 from app.models.practice_assignment import PracticeAssignment
 from app.models.practice_type import PracticeType
@@ -147,6 +147,8 @@ async def _snapshot_students(
     db: AsyncSession, assignment_ids: list[UUID], organization_id: UUID
 ) -> list[dict[str, Any]]:
     """Assignment'lardan talaba snapshot'ini olish + tashkilot mos kelishini tekshirish."""
+    if not assignment_ids:
+        return []
     sup_user = aliased(User)
     stmt = (
         select(
@@ -190,28 +192,126 @@ async def _snapshot_students(
                 status.HTTP_400_BAD_REQUEST,
                 f"Biriktirish boshqa tashkilotga tegishli: {r['id']}",
             )
-        if r["direction_code"] is None:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"Talabaning yo'nalishi aniqlanmagan: assignment={r['id']}",
-            )
 
     return [
         {
             "assignment_id": str(r["id"]),
-            "hemis_id": r["hemis_id"],
-            "full_name": " ".join(r["full_name"].split()),  # multiple spaces → single
-            "direction_code": r["direction_code"],
-            "direction_name": r["direction_name"],
+            "hemis_id": r["hemis_id"] or "",
+            "full_name": " ".join((r["full_name"] or "").split()),
+            "direction_code": r["direction_code"] or "",
+            "direction_name": r["direction_name"] or "",
             "course": r["course"],
-            "group_name": r["group_name"],
-            "faculty_name": r["faculty_name"],
+            "group_name": r["group_name"] or "",
+            "faculty_name": r["faculty_name"] or "",
             "supervisor_name": (r["supervisor_name"] or "").strip() or None,
             "start_date": r["start_date"].isoformat(),
             "end_date": r["end_date"].isoformat(),
         }
         for r in rows
     ]
+
+
+async def _snapshot_direct_students(
+    db: AsyncSession,
+    student_ids: list[UUID],
+    group_ids: list[UUID],
+    start_date: Any,
+    end_date: Any,
+    organization_id: UUID | None = None,
+    practice_type_id: UUID | None = None,
+    academic_year_id: UUID | None = None,
+) -> list[dict[str, Any]]:
+    target_student_ids = set(student_ids or [])
+    if group_ids:
+        grp_student_ids = (
+            await db.execute(
+                select(Student.id).where(
+                    Student.group_id.in_(group_ids),
+                    Student.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+        target_student_ids.update(grp_student_ids)
+
+    if not target_student_ids:
+        return []
+
+    stmt = (
+        select(
+            Student.id.label("student_id"),
+            Student.hemis_id,
+            (
+                User.last_name + " " + User.first_name + " " + func.coalesce(User.middle_name, "")
+            ).label("full_name"),
+            Direction.code.label("direction_code"),
+            Direction.name.label("direction_name"),
+            Faculty.name.label("faculty_name"),
+            Group.name.label("group_name"),
+            Student.group_id,
+            Student.course,
+        )
+        .join(User, User.id == Student.user_id)
+        .outerjoin(Group, Group.id == Student.group_id)
+        .outerjoin(Direction, Direction.id == Group.direction_id)
+        .outerjoin(Faculty, Faculty.id == Direction.faculty_id)
+        .where(Student.id.in_(list(target_student_ids)))
+    )
+    rows = (await db.execute(stmt)).mappings().all()
+
+    st_date_str = start_date.isoformat() if hasattr(start_date, "isoformat") else str(start_date)
+    en_date_str = end_date.isoformat() if hasattr(end_date, "isoformat") else str(end_date)
+
+    result_snapshots: list[dict[str, Any]] = []
+
+    for r in rows:
+        st_id = r["student_id"]
+        assignment_id_str: str | None = None
+
+        if organization_id and practice_type_id and academic_year_id:
+            assign_stmt = select(PracticeAssignment).where(
+                PracticeAssignment.student_id == st_id,
+                PracticeAssignment.practice_type_id == practice_type_id,
+                PracticeAssignment.academic_year_id == academic_year_id,
+                PracticeAssignment.status != AssignmentStatus.CANCELLED,
+            )
+            existing_assign = (await db.execute(assign_stmt)).scalars().first()
+
+            if existing_assign:
+                existing_assign.organization_id = organization_id
+                existing_assign.start_date = start_date
+                existing_assign.end_date = end_date
+                assignment_id_str = str(existing_assign.id)
+            else:
+                new_assign = PracticeAssignment(
+                    student_id=st_id,
+                    group_id=r["group_id"],
+                    course=r["course"] or 1,
+                    practice_type_id=practice_type_id,
+                    academic_year_id=academic_year_id,
+                    organization_id=organization_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    status=AssignmentStatus.ACTIVE,
+                )
+                db.add(new_assign)
+                await db.flush()
+                assignment_id_str = str(new_assign.id)
+
+        result_snapshots.append({
+            "assignment_id": assignment_id_str,
+            "hemis_id": r["hemis_id"] or "",
+            "full_name": " ".join((r["full_name"] or "").split()),
+            "direction_code": r["direction_code"] or "",
+            "direction_name": r["direction_name"] or "",
+            "course": r["course"] or 1,
+            "group_name": r["group_name"] or "",
+            "faculty_name": r["faculty_name"] or "",
+            "supervisor_name": None,
+            "start_date": st_date_str,
+            "end_date": en_date_str,
+        })
+
+    return result_snapshots
 
 
 async def create_contract(db: AsyncSession, data: BaseModel, created_by: UUID) -> dict[str, Any]:
@@ -227,9 +327,28 @@ async def create_contract(db: AsyncSession, data: BaseModel, created_by: UUID) -
     if not org:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tashkilot topilmadi")
 
-    students_snapshot = await _snapshot_students(
-        db, payload["assignment_ids"], payload["organization_id"]
-    )
+    assignment_ids = payload.get("assignment_ids") or []
+    student_ids = payload.get("student_ids") or []
+    group_ids = payload.get("group_ids") or []
+
+    students_snapshot: list[dict[str, Any]] = []
+    if assignment_ids:
+        students_snapshot.extend(
+            await _snapshot_students(db, assignment_ids, payload["organization_id"])
+        )
+    if student_ids or group_ids:
+        students_snapshot.extend(
+            await _snapshot_direct_students(
+                db,
+                student_ids,
+                group_ids,
+                payload["start_date"],
+                payload["end_date"],
+                payload["organization_id"],
+                payload["practice_type_id"],
+                payload["academic_year_id"],
+            )
+        )
 
     # Raqam va token
     year = payload["start_date"].year

@@ -125,7 +125,7 @@ export function StudentApplicationCard() {
                   {a.contract_number && (
                     <span className="text-xs text-success">№ {a.contract_number}</span>
                   )}
-                  {a.has_contract_file && (
+                  {(a.has_contract_file || !!a.contract_template_id || !!a.contract_number) && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -142,10 +142,12 @@ export function StudentApplicationCard() {
                 </div>
               </div>
             )}
-            {a.status === "approved" && a.contract_number && (
+            {a.status === "approved" && (
               <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-xs text-success">№ {a.contract_number}</span>
-                {a.has_contract_file && (
+                <span className="text-xs text-success">
+                  {a.contract_number ? `№ ${a.contract_number}` : t("studentApplicationCard.status.approved")}
+                </span>
+                {(a.has_contract_file || !!a.contract_template_id || !!a.contract_number) && (
                   <div className="flex gap-2">
                     <Button
                       size="sm"

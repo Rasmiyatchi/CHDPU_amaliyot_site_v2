@@ -86,26 +86,65 @@ async def generate_pdf(id_: UUID, db: SessionDep, _: RequireAdmin) -> ContractRe
     return ContractRead.model_validate(await svc.generate_pdf(db, id_))
 
 
+async def _check_contract_access(db: SessionDep, contract_id: UUID, user: CurrentUser) -> None:
+    from app.models.enums import UserRole
+    if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        return
+    if user.role == UserRole.STUDENT:
+        from sqlalchemy import select
+        from app.models.practice_assignment import PracticeAssignment
+        from app.models.student import Student
+        student_id = (await db.execute(select(Student.id).where(Student.user_id == user.id))).scalar_one_or_none()
+        if student_id:
+            assign = (await db.execute(
+                select(PracticeAssignment.id).where(
+                    PracticeAssignment.contract_id == contract_id,
+                    PracticeAssignment.student_id == student_id,
+                )
+            )).scalar_one_or_none()
+            if assign:
+                return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ruxsat yo'q")
+
+
 @router.get("/{id_}/pdf")
-async def download_pdf(id_: UUID, db: SessionDep, _: RequireAdmin) -> FileResponse:
+async def download_pdf(id_: UUID, db: SessionDep, user: CurrentUser) -> FileResponse:
     """Saqlangan PDF faylini yuklab olish yoki ko'rish."""
+    await _check_contract_access(db, id_, user)
     contract = await svc.get_contract(db, id_)
     if not contract["pdf_path"]:
         contract = await svc.generate_pdf(db, id_)
 
     base = Path(__file__).parent.parent.parent.parent
-    clean_rel = str(contract["pdf_path"] or "").lstrip("/\\")
-    if clean_rel.startswith("storage/") or clean_rel.startswith("storage\\"):
-        abs_path = base / clean_rel
-    else:
-        abs_path = base / "storage" / "contracts" / clean_rel
+    clean_rel = str(contract["pdf_path"] or "").replace("\\", "/").lstrip("/")
+    candidates = [
+        base / clean_rel,
+        base / "storage" / clean_rel,
+        base / "storage" / "contracts" / clean_rel,
+        Path(contract["pdf_path"] or ""),
+    ]
+    abs_path = None
+    for cand in candidates:
+        if cand.exists() and cand.is_file():
+            abs_path = cand
+            break
 
-    if not abs_path.exists():
+    if not abs_path:
         contract = await svc.generate_pdf(db, id_)
-        clean_rel = str(contract["pdf_path"] or "").lstrip("/\\")
-        abs_path = (base / clean_rel) if (clean_rel.startswith("storage/") or clean_rel.startswith("storage\\")) else (base / "storage" / "contracts" / clean_rel)
-        if not abs_path.exists():
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "PDF fayli topilmadi")
+        clean_rel = str(contract["pdf_path"] or "").replace("\\", "/").lstrip("/")
+        candidates = [
+            base / clean_rel,
+            base / "storage" / clean_rel,
+            base / "storage" / "contracts" / clean_rel,
+            Path(contract["pdf_path"] or ""),
+        ]
+        for cand in candidates:
+            if cand.exists() and cand.is_file():
+                abs_path = cand
+                break
+
+    if not abs_path:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "PDF fayli topilmadi")
 
     return FileResponse(
         path=str(abs_path),
@@ -140,13 +179,14 @@ async def upload_scan(
 
 
 @router.get("/{id_}/scan")
-async def download_scan(id_: UUID, db: SessionDep, _: RequireAdmin) -> FileResponse:
+async def download_scan(id_: UUID, db: SessionDep, user: CurrentUser) -> FileResponse:
+    await _check_contract_access(db, id_, user)
     contract = await svc.get_contract(db, id_)
     if not contract["scan_path"]:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Skan yuklanmagan")
     from app.services.pdf import STORAGE_DIR
 
-    clean_scan = str(contract["scan_path"]).lstrip("/\\")
+    clean_scan = str(contract["scan_path"]).replace("\\", "/").lstrip("/")
     base_dir = STORAGE_DIR.parent.parent
     candidates = [
         base_dir / clean_scan,

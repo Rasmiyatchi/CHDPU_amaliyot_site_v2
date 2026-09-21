@@ -22,14 +22,16 @@ class ContractStudentSnapshot(BaseModel):
 
 
 class ContractCreate(BaseModel):
-    """Admin yaratish — mavjud assignments asosida (snapshot nusxa olinadi)."""
+    """Admin yaratish — biriktirishlar, talabalar yoki guruhlar asosida shartnoma shakllantirish."""
 
     template_ref: ContractTemplate = ContractTemplate.FOUR_PLUS_TWO
     contract_template_id: UUID | None = None
     organization_id: UUID
     academic_year_id: UUID
     practice_type_id: UUID
-    assignment_ids: list[UUID] = Field(..., min_length=1, max_length=100)
+    assignment_ids: list[UUID] | None = Field(default=[], max_length=500)
+    student_ids: list[UUID] | None = Field(default=[], max_length=500)
+    group_ids: list[UUID] | None = Field(default=[], max_length=50)
     start_date: date
     end_date: date
     notes: str | None = None

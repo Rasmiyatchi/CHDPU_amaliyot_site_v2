@@ -784,20 +784,52 @@ async def contract_file_path(db: AsyncSession, user: User, id_: UUID):
         student = await _student_for_user(db, user)
         if obj.student_id != student.id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Ruxsat yo'q")
-    if not obj.contract_file:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Shartnoma fayli hali yo'q")
 
-    # Ikki saqlash formati bor: HTML-PDF "storage/contracts/N.pdf" (apps/api ga
-    # nisbatan), eski DOCX esa yalang'och fayl nomi (storage/contract_templates da).
+    if not obj.contract_file and obj.contract_template_id and obj.status in (ApplicationStatus.APPROVED, ApplicationStatus.ACTIVE):
+        await _generate_contract(db, obj)
+        await db.commit()
+
+    if not obj.contract_file:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Shartnoma fayli hali shakllantirilmagan")
+
     base = Path(__file__).parent.parent.parent
-    rel = str(obj.contract_file["path"])
-    if rel.startswith("storage/"):
-        file_path = base / rel
-    else:
-        file_path = base / "storage" / "contract_templates" / rel
-    if not file_path.exists():
+    rel = str(obj.contract_file.get("path", "")).replace("\\", "/").lstrip("/")
+
+    candidates = [
+        base / rel,
+        base / "storage" / rel,
+        base / "storage" / "contracts" / rel,
+        base / "storage" / "contract_templates" / rel,
+        Path(obj.contract_file.get("path", "")),
+    ]
+
+    file_path = None
+    for cand in candidates:
+        if cand.exists() and cand.is_file():
+            file_path = cand
+            break
+
+    if not file_path and obj.contract_template_id:
+        await _generate_contract(db, obj)
+        await db.commit()
+        rel = str(obj.contract_file.get("path", "")).replace("\\", "/").lstrip("/")
+        candidates = [
+            base / rel,
+            base / "storage" / rel,
+            base / "storage" / "contracts" / rel,
+            base / "storage" / "contract_templates" / rel,
+            Path(obj.contract_file.get("path", "")),
+        ]
+        for cand in candidates:
+            if cand.exists() and cand.is_file():
+                file_path = cand
+                break
+
+    if not file_path:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Shartnoma fayli topilmadi")
+
     return file_path, obj.contract_number
+
 
 
 async def upload_scan(
