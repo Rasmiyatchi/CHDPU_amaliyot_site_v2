@@ -1014,7 +1014,11 @@ async def generate_official_contract_pdf(
     # Shablonni qidiramiz
     tpl = None
     if template_id:
-        tpl = await db.get(ContractTemplateDoc, template_id)
+        try:
+            valid_tpl_id = UUID(str(template_id)) if not isinstance(template_id, UUID) else template_id
+            tpl = await db.get(ContractTemplateDoc, valid_tpl_id)
+        except (ValueError, TypeError, AttributeError):
+            tpl = None
 
     if not tpl and contract.practice_type_id:
         tpl = (

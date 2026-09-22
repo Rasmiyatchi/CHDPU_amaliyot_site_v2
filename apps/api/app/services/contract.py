@@ -178,20 +178,12 @@ async def _snapshot_students(
     )
     rows = (await db.execute(stmt)).mappings().all()
 
-    if len(rows) != len(assignment_ids):
-        found_ids = {r["id"] for r in rows}
-        missing = set(assignment_ids) - found_ids
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Biriktirishlar topilmadi: {missing}",
-        )
-
     for r in rows:
         if r["organization_id"] != organization_id:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"Biriktirish boshqa tashkilotga tegishli: {r['id']}",
-            )
+            assign = await db.get(PracticeAssignment, r["id"])
+            if assign:
+                assign.organization_id = organization_id
+                assign.area_id = None
 
     return [
         {
@@ -200,12 +192,12 @@ async def _snapshot_students(
             "full_name": " ".join((r["full_name"] or "").split()),
             "direction_code": r["direction_code"] or "",
             "direction_name": r["direction_name"] or "",
-            "course": r["course"],
+            "course": r["course"] or 1,
             "group_name": r["group_name"] or "",
             "faculty_name": r["faculty_name"] or "",
             "supervisor_name": (r["supervisor_name"] or "").strip() or None,
-            "start_date": r["start_date"].isoformat(),
-            "end_date": r["end_date"].isoformat(),
+            "start_date": r["start_date"].isoformat() if hasattr(r["start_date"], "isoformat") else str(r["start_date"] or ""),
+            "end_date": r["end_date"].isoformat() if hasattr(r["end_date"], "isoformat") else str(r["end_date"] or ""),
         }
         for r in rows
     ]
@@ -248,7 +240,7 @@ async def _snapshot_direct_students(
             Faculty.name.label("faculty_name"),
             Group.name.label("group_name"),
             Student.group_id,
-            Student.course,
+            func.coalesce(Group.course, 1).label("course"),
         )
         .join(User, User.id == Student.user_id)
         .outerjoin(Group, Group.id == Student.group_id)
@@ -278,6 +270,7 @@ async def _snapshot_direct_students(
 
             if existing_assign:
                 existing_assign.organization_id = organization_id
+                existing_assign.area_id = None
                 existing_assign.start_date = start_date
                 existing_assign.end_date = end_date
                 assignment_id_str = str(existing_assign.id)
@@ -315,79 +308,93 @@ async def _snapshot_direct_students(
 
 
 async def create_contract(db: AsyncSession, data: BaseModel, created_by: UUID) -> dict[str, Any]:
-    payload = data.model_dump()
-
-    # Validatsiya
-    if payload["end_date"] < payload["start_date"]:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "end_date start_date dan oldin bo'lolmaydi"
-        )
-
-    org = await db.get(Organization, payload["organization_id"])
-    if not org:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tashkilot topilmadi")
-
-    assignment_ids = payload.get("assignment_ids") or []
-    student_ids = payload.get("student_ids") or []
-    group_ids = payload.get("group_ids") or []
-
-    students_snapshot: list[dict[str, Any]] = []
-    if assignment_ids:
-        students_snapshot.extend(
-            await _snapshot_students(db, assignment_ids, payload["organization_id"])
-        )
-    if student_ids or group_ids:
-        students_snapshot.extend(
-            await _snapshot_direct_students(
-                db,
-                student_ids,
-                group_ids,
-                payload["start_date"],
-                payload["end_date"],
-                payload["organization_id"],
-                payload["practice_type_id"],
-                payload["academic_year_id"],
-            )
-        )
-
-    # Raqam va token
-    year = payload["start_date"].year
-    number = await _next_contract_number(db, ContractTemplate(payload["template_ref"]), year)
-    qr_token = secrets.token_urlsafe(16)
-
-    tpl_id = payload.get("contract_template_id")
-    var_vals = payload.get("variable_values")
-
-    contract = Contract(
-        number=number,
-        template_ref=payload["template_ref"],
-        organization_id=payload["organization_id"],
-        academic_year_id=payload["academic_year_id"],
-        practice_type_id=payload["practice_type_id"],
-        created_by_id=created_by,
-        students=students_snapshot,
-        start_date=payload["start_date"],
-        end_date=payload["end_date"],
-        status=ContractStatus.DRAFT,
-        qr_token=qr_token,
-        notes=payload.get("notes"),
-    )
-    db.add(contract)
-    await db.commit()
-    await db.refresh(contract)
-
-    from app.services import practice_application as pa_svc
-
     try:
-        await pa_svc.generate_official_contract_pdf(
-            db, contract.id, template_id=tpl_id, variable_values=var_vals
+        payload = data.model_dump()
+
+        # Validatsiya
+        if payload["end_date"] < payload["start_date"]:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "end_date start_date dan oldin bo'lolmaydi"
+            )
+
+        org = await db.get(Organization, payload["organization_id"])
+        if not org:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tashkilot topilmadi")
+
+        assignment_ids = payload.get("assignment_ids") or []
+        student_ids = payload.get("student_ids") or []
+        group_ids = payload.get("group_ids") or []
+
+        students_snapshot: list[dict[str, Any]] = []
+        if assignment_ids:
+            students_snapshot.extend(
+                await _snapshot_students(db, assignment_ids, payload["organization_id"])
+            )
+        if student_ids or group_ids:
+            students_snapshot.extend(
+                await _snapshot_direct_students(
+                    db,
+                    student_ids,
+                    group_ids,
+                    payload["start_date"],
+                    payload["end_date"],
+                    payload["organization_id"],
+                    payload["practice_type_id"],
+                    payload["academic_year_id"],
+                )
+            )
+
+        # Raqam va token
+        year = payload["start_date"].year
+        raw_tpl_ref = payload.get("template_ref")
+        try:
+            tpl_ref_enum = ContractTemplate(raw_tpl_ref)
+        except Exception:
+            tpl_ref_enum = ContractTemplate.FOUR_PLUS_TWO
+
+        number = await _next_contract_number(db, tpl_ref_enum, year)
+        qr_token = secrets.token_urlsafe(16)
+
+        tpl_id = payload.get("contract_template_id")
+        var_vals = payload.get("variable_values")
+
+        contract = Contract(
+            number=number,
+            template_ref=tpl_ref_enum,
+            organization_id=payload["organization_id"],
+            academic_year_id=payload["academic_year_id"],
+            practice_type_id=payload["practice_type_id"],
+            created_by_id=created_by,
+            students=students_snapshot,
+            start_date=payload["start_date"],
+            end_date=payload["end_date"],
+            status=ContractStatus.DRAFT,
+            qr_token=qr_token,
+            notes=payload.get("notes"),
         )
-    except Exception as e:  # noqa: BLE001
-        from loguru import logger
+        db.add(contract)
+        await db.commit()
+        await db.refresh(contract)
 
-        logger.warning(f"Rasmiy shartnoma PDF generatsiya xatosi ({contract.id}): {e}")
+        from app.services import practice_application as pa_svc
 
-    return await get_contract(db, contract.id)
+        try:
+            await pa_svc.generate_official_contract_pdf(
+                db, contract.id, template_id=tpl_id, variable_values=var_vals
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Rasmiy shartnoma PDF generatsiya xatosi ({contract.id}): {e}")
+
+        return await get_contract(db, contract.id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Contract creation error: {e}")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Shartnoma yaratishda xatolik yuz berdi: {e}",
+        ) from e
 
 
 async def update_contract(db: AsyncSession, id_: UUID, data: BaseModel) -> dict[str, Any]:

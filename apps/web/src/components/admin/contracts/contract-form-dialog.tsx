@@ -134,10 +134,16 @@ export function ContractFormDialog({ open, onClose }: Props) {
   const canShowAssignments = !!organizationId && !!practiceTypeId && !!academicYearId;
 
   const handleTemplateChange = (val: string) => {
-    setSelectedTemplateId(val);
-    const found = (contractTemplates.data ?? []).find((t) => t.id === val);
-    if (found?.practice_type_id) {
-      setPracticeTypeId(found.practice_type_id);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    if (isUuid) {
+      setSelectedTemplateId(val);
+      const found = (contractTemplates.data ?? []).find((t) => t.id === val);
+      if (found?.practice_type_id) {
+        setPracticeTypeId(found.practice_type_id);
+      }
+    } else {
+      setSelectedTemplateId("");
+      setTemplateRef(val as ContractTemplate);
     }
   };
 
@@ -238,8 +244,14 @@ export function ContractFormDialog({ open, onClose }: Props) {
 
   const handleSubmit = async () => {
     try {
+      const validTemplateId =
+        selectedTemplateId &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedTemplateId)
+          ? (selectedTemplateId as UUID)
+          : null;
+
       await create.mutateAsync({
-        contract_template_id: (selectedTemplateId as UUID) || null,
+        contract_template_id: validTemplateId,
         template_ref: templateRef,
         organization_id: organizationId as UUID,
         academic_year_id: academicYearId as UUID,
@@ -290,7 +302,7 @@ export function ContractFormDialog({ open, onClose }: Props) {
                 )}
               </Label>
               <Select
-                value={selectedTemplateId || (activeTemplates[0]?.id ?? templateRef)}
+                value={selectedTemplateId || templateRef}
                 onValueChange={handleTemplateChange}
               >
                 <SelectTrigger className="mt-1.5">
