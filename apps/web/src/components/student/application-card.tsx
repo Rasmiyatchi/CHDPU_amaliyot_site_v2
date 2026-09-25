@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardEdit, Download, Loader2, Pencil, Plus, Upload } from "lucide-react";
+import { CheckCircle2, ClipboardEdit, Download, FileText, Loader2, Pencil, Plus, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  downloadApplicationScan,
   downloadContract,
   useContractTypes,
   useCreateApplication,
@@ -113,19 +114,19 @@ export function StudentApplicationCard() {
               </Alert>
             )}
             {a.status === "active" && (
-              <div className="mt-2 rounded-md border border-success/30 bg-success/10 p-2.5">
+              <div className="mt-2 rounded-md border border-success/30 bg-success/10 p-2.5 space-y-2">
                 <div className="flex items-center gap-1.5 text-sm font-medium text-success">
                   <CheckCircle2 className="h-4 w-4" />
                   {t("studentApplicationCard.contractClosed")}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {t("studentApplicationCard.contractClosedDescription")}
                 </p>
-                <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-success/20">
                   {a.contract_number && (
-                    <span className="text-xs text-success">№ {a.contract_number}</span>
+                    <span className="text-xs font-semibold text-success">№ {a.contract_number}</span>
                   )}
-                  {(a.has_contract_file || !!a.contract_template_id || !!a.contract_number) && (
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -138,64 +139,99 @@ export function StudentApplicationCard() {
                       <Download className="h-4 w-4" />
                       {t("common.download")}
                     </Button>
-                  )}
+                    {a.has_scan_file && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() =>
+                          downloadApplicationScan(a.id).catch((e) =>
+                            toast.error(e instanceof Error ? e.message : t("common.error")),
+                          )
+                        }
+                      >
+                        <FileText className="h-4 w-4" />
+                        Skan fayli
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
             {a.status === "approved" && (
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-xs text-success">
-                  {a.contract_number ? `№ ${a.contract_number}` : t("studentApplicationCard.status.approved")}
-                </span>
-                {(a.has_contract_file || !!a.contract_template_id || !!a.contract_number) && (
-                  <div className="flex gap-2">
+              <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-success">
+                    {a.contract_number ? `№ ${a.contract_number}` : t("studentApplicationCard.status.approved")}
+                  </span>
+                  {a.has_scan_file && (
+                    <Badge variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300">
+                      Skan yuklangan
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      downloadContract(a.id, a.contract_number).catch((e) =>
+                        toast.error(e instanceof Error ? e.message : t("common.error")),
+                      )
+                    }
+                  >
+                    <Download className="h-4 w-4" />
+                    {t("common.download")}
+                  </Button>
+
+                  {a.has_scan_file && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() =>
-                        downloadContract(a.id, a.contract_number).catch((e) =>
+                        downloadApplicationScan(a.id).catch((e) =>
                           toast.error(e instanceof Error ? e.message : t("common.error")),
                         )
                       }
                     >
-                      <Download className="h-4 w-4" />
-                      {t("common.download")}
+                      <FileText className="h-4 w-4" />
+                      Skan fayli
                     </Button>
-                    
-                    <Label
-                      htmlFor={`scan-upload-${a.id}`}
-                      className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    >
-                      {uploadScan.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                      {a.has_scan_file
-                        ? t("studentApplicationCard.scanUpdate")
-                        : t("studentApplicationCard.scanUpload")}
-                    </Label>
-                    <input
-                      id={`scan-upload-${a.id}`}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="hidden"
-                      disabled={uploadScan.isPending}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          uploadScan.mutate(
-                            { id: a.id, file },
-                            {
-                              onSuccess: () => toast.success(t("studentApplicationCard.scanUploaded")),
-                              onError: (err) => toast.error(err.message || t("common.error")),
-                            }
-                          );
-                        }
-                      }}
-                    />
-                  </div>
-                )}
+                  )}
+
+                  <Label
+                    htmlFor={`scan-upload-${a.id}`}
+                    className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                  >
+                    {uploadScan.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    {a.has_scan_file
+                      ? t("studentApplicationCard.scanUpdate")
+                      : t("studentApplicationCard.scanUpload")}
+                  </Label>
+                  <input
+                    id={`scan-upload-${a.id}`}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    disabled={uploadScan.isPending}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        uploadScan.mutate(
+                          { id: a.id, file },
+                          {
+                            onSuccess: () => toast.success(t("studentApplicationCard.scanUploaded")),
+                            onError: (err) => toast.error(err.message || t("common.error")),
+                          }
+                        );
+                      }
+                    }}
+                  />
+                </div>
               </div>
             )}
             {a.status === "approved" && !a.contract_number && a.qr_token && (

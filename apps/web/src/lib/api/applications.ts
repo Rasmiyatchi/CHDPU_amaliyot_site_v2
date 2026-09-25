@@ -155,7 +155,16 @@ export async function downloadContract(id: UUID, number: string | null): Promise
     const res2 = await fetch(`/api/v1/practice-applications/${id}/contract.docx`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res2.ok) throw new Error(`Yuklab bo'lmadi (${res2.status})`);
+    if (!res2.ok) {
+      let msg = `Yuklab bo'lmadi (${res2.status})`;
+      try {
+        const errJson = await res2.json();
+        if (errJson.detail) {
+          msg = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+        }
+      } catch {}
+      throw new Error(msg);
+    }
     const blob = await res2.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -178,19 +187,31 @@ export async function downloadContract(id: UUID, number: string | null): Promise
   URL.revokeObjectURL(url);
 }
 
-export async function downloadApplicationScan(id: UUID): Promise<void> {
+export async function downloadApplicationScan(id: UUID, fileName?: string): Promise<void> {
   const token = useAuthStore.getState().accessToken;
   if (!token) throw new Error(i18n.t("common.sessionExpired"));
   const res = await fetch(`/api/v1/practice-applications/${id}/scan`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error(`Yuklab bo'lmadi (${res.status})`);
+    let msg = `Yuklab bo'lmadi (${res.status})`;
+    try {
+      const errJson = await res.json();
+      if (errJson.detail) {
+        msg = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+      }
+    } catch {}
+    throw new Error(msg);
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  window.open(url, "_blank"); // O'zgartirildi: skan yangi tabda ochiladi
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName || `shartnoma_skan_${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Talaba: tuzatishga qaytarilgan arizani to'g'irlab qayta yuborish. */
@@ -211,7 +232,9 @@ export function useUploadApplicationScan() {
     mutationFn: async ({ id, file }: { id: UUID; file: File }) => {
       const fd = new FormData();
       fd.append("file", file);
-      return api.post(`v1/practice-applications/${id}/upload-scan`, { body: fd }).json<PracticeApplication>();
+      return api
+        .post(`v1/practice-applications/${id}/upload-scan`, { body: fd, timeout: 120_000 })
+        .json<PracticeApplication>();
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

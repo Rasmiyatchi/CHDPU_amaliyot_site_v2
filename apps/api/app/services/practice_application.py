@@ -778,6 +778,7 @@ async def list_contract_types(db: AsyncSession) -> list[dict[str, Any]]:
 async def contract_file_path(db: AsyncSession, user: User, id_: UUID):
     """Generatsiya qilingan shartnoma faylining yo'li (kirish tekshiruvi bilan)."""
     from app.models.enums import UserRole
+    from app.models.contract_template import ContractTemplateDoc
 
     obj = await _get_obj(db, id_)
     if user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
@@ -785,9 +786,19 @@ async def contract_file_path(db: AsyncSession, user: User, id_: UUID):
         if obj.student_id != student.id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Ruxsat yo'q")
 
-    if not obj.contract_file and obj.contract_template_id and obj.status in (ApplicationStatus.APPROVED, ApplicationStatus.ACTIVE):
-        await _generate_contract(db, obj)
-        await db.commit()
+    if not obj.contract_file and obj.status in (ApplicationStatus.APPROVED, ApplicationStatus.ACTIVE):
+        if not obj.contract_template_id:
+            stmt = (
+                select(ContractTemplateDoc)
+                .where(ContractTemplateDoc.status == ContractTemplateStatus.ACTIVE)
+                .order_by(ContractTemplateDoc.created_at.desc())
+            )
+            tpl = (await db.execute(stmt)).scalars().first()
+            if tpl:
+                obj.contract_template_id = tpl.id
+        if obj.contract_template_id:
+            await _generate_contract(db, obj)
+            await db.commit()
 
     if not obj.contract_file:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Shartnoma fayli hali shakllantirilmagan")
@@ -809,21 +820,31 @@ async def contract_file_path(db: AsyncSession, user: User, id_: UUID):
             file_path = cand
             break
 
-    if not file_path and obj.contract_template_id:
-        await _generate_contract(db, obj)
-        await db.commit()
-        rel = str(obj.contract_file.get("path", "")).replace("\\", "/").lstrip("/")
-        candidates = [
-            base / rel,
-            base / "storage" / rel,
-            base / "storage" / "contracts" / rel,
-            base / "storage" / "contract_templates" / rel,
-            Path(obj.contract_file.get("path", "")),
-        ]
-        for cand in candidates:
-            if cand.exists() and cand.is_file():
-                file_path = cand
-                break
+    if not file_path:
+        if not obj.contract_template_id:
+            stmt = (
+                select(ContractTemplateDoc)
+                .where(ContractTemplateDoc.status == ContractTemplateStatus.ACTIVE)
+                .order_by(ContractTemplateDoc.created_at.desc())
+            )
+            tpl = (await db.execute(stmt)).scalars().first()
+            if tpl:
+                obj.contract_template_id = tpl.id
+        if obj.contract_template_id:
+            await _generate_contract(db, obj)
+            await db.commit()
+            rel = str(obj.contract_file.get("path", "")).replace("\\", "/").lstrip("/")
+            candidates = [
+                base / rel,
+                base / "storage" / rel,
+                base / "storage" / "contracts" / rel,
+                base / "storage" / "contract_templates" / rel,
+                Path(obj.contract_file.get("path", "")),
+            ]
+            for cand in candidates:
+                if cand.exists() and cand.is_file():
+                    file_path = cand
+                    break
 
     if not file_path:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Shartnoma fayli topilmadi")
