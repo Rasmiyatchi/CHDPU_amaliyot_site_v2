@@ -35,6 +35,8 @@ class UserMeResponse(BaseModel):
     is_active: bool
     last_login_at: datetime | None
     must_change_password: bool = False
+    faculty_id: UUID | None = None
+    permissions: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

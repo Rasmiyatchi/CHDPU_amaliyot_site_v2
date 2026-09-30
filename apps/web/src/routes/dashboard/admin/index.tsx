@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowRight,
   BookOpen,
   Building2,
   CalendarCheck,
@@ -10,12 +11,14 @@ import {
   FileText,
   History,
   Loader2,
-  ShieldCheck,
   UserCog,
+  UserPlus,
   Users,
+  UserX,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AttendanceStatusBadge } from "@/components/admin/attendance/attendance-status-badge";
@@ -67,30 +70,30 @@ export function AdminHome() {
 
   return (
     <div className="container max-w-7xl py-8">
-      <div
-        className={
-          "mb-6 overflow-hidden rounded-xl p-6 text-white shadow-lg " +
-          (isSuperAdmin
-            ? "bg-gradient-to-br from-purple-600 to-indigo-700 dark:from-purple-800 dark:to-indigo-900"
-            : "bg-gradient-to-br from-indigo-600 to-blue-700 dark:from-indigo-800 dark:to-blue-900")
-        }
-      >
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold">
-              {isSuperAdmin
-                ? t("adminIndex.superAdminTitle")
-                : t("adminIndex.adminTitle")}
-            </h1>
-            <p className="mt-0.5 text-sm text-indigo-50">
-              {t("adminIndex.welcome", { name: user?.full_name })}
-              {isSuperAdmin && t("adminIndex.superAdminSuffix")}
-            </p>
-          </div>
+      {/* Evolve Dash Welcome Banner */}
+      <section className="dash-welcome mb-0">
+        <div>
+          <span>{isSuperAdmin ? "CHDPU SUPERADMINISTRATOR" : "CHDPU ADMINISTRATOR"}</span>
+          <h2>
+            {isSuperAdmin
+              ? t("adminIndex.superAdminTitle")
+              : t("adminIndex.adminTitle")}
+          </h2>
+          <p>
+            {t("adminIndex.welcome", { name: user?.full_name })}
+            {isSuperAdmin && t("adminIndex.superAdminSuffix")}
+          </p>
         </div>
+        <div className="progress-score">
+          <strong>
+            {stats ? (stats.students?.total ?? 0) : 0}
+            <small> ta</small>
+          </strong>
+          <span>FAOL TALABA</span>
+        </div>
+      </section>
+      <div className="dash-progress mb-6 rounded-full overflow-hidden">
+        <i style={{ width: "100%" }} />
       </div>
 
       {isPending && (
@@ -108,6 +111,46 @@ export function AdminHome() {
 
       {stats && (
         <div className="space-y-6">
+          {/* Biriktirilmagan talabalar bo'yicha ogohlantirish (Widget) */}
+          {((stats.students?.unassigned ?? 0) > 0) && (
+            <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-foreground">
+                        Amaliyotga biriktirilmagan talabalar mavjud!
+                      </h3>
+                      <Badge variant="outline" className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-bold text-xs">
+                        {stats.students.unassigned} nafar
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
+                      Tizimdagi jami <b>{stats.students.total}</b> nafar talabadan <b className="text-amber-600 dark:text-amber-400">{stats.students.unassigned} nafari</b> hali birorta ham amaliyot o'tash joyiga biriktirilmagan.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Button asChild size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs gap-1.5 shadow-sm">
+                    <Link to="/admin/assignments">
+                      <UserPlus className="h-3.5 w-3.5" />
+                      <span>Talabalarni biriktirish</span>
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline" className="border-amber-500/30 text-xs gap-1.5">
+                    <Link to="/admin/structure/students?has_assignment=false">
+                      <span>Ro'yxatni ko'rish</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {stats.pending_reviews.total > 0 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -196,7 +239,7 @@ export function AdminHome() {
             </Card>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
               label={t("common.students")}
               value={stats.students.total}
@@ -205,6 +248,13 @@ export function AdminHome() {
               hint={t("adminIndex.studying", {
                 count: stats.students.by_status.studying,
               })}
+            />
+            <StatCard
+              label="Biriktirilmagan"
+              value={stats.students.unassigned ?? 0}
+              icon={UserX}
+              accent={(stats.students.unassigned ?? 0) > 0 ? "warning" : "success"}
+              hint={(stats.students.unassigned ?? 0) > 0 ? "Amaliyotga biriktirilmagan" : "Barchasi biriktirilgan"}
             />
             <StatCard
               label={t("adminIndex.assignments")}

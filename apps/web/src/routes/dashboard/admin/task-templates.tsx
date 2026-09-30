@@ -210,14 +210,14 @@ export function TaskTemplatesPage() {
               <Card key={key}>
                 <CardHeader>
                   <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-                    <span className="font-semibold">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
                       {t("common.courseN", { n: course_ })}
                     </span>
-                    <span className="text-muted-foreground">
+                    <span className="font-medium text-slate-600 dark:text-slate-400">
                       · {t(SEMESTER_LABEL_KEY[sem_ as Semester])}
                     </span>
                     <TaskCategoryBadge category={cat_ as TaskCategory} />
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ml-auto text-xs font-semibold text-slate-600 dark:text-slate-400">
                       {t("adminTaskTemplates.totalPoints", { points: totalByGroup(key) })}
                     </span>
                   </CardTitle>
@@ -229,29 +229,29 @@ export function TaskTemplatesPage() {
                         key={tpl.id}
                         className="flex items-start gap-3 rounded-md border border-border p-3"
                       >
-                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
                           {tpl.display_order}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium leading-snug">{tpl.title}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <div className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-snug">{tpl.title}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                             <TaskTypeLabel type={tpl.type} />
                             {tpl.quantity > 1 && (
-                              <Badge variant="outline">
+                              <Badge variant="outline" className="font-medium text-slate-700 dark:text-slate-300">
                                 {t("adminTaskTemplates.quantityN", { n: tpl.quantity })}
                               </Badge>
                             )}
                             {tpl.month_hint && (
-                              <span>{tpl.month_hint}</span>
+                              <span className="font-medium text-slate-600 dark:text-slate-400">{tpl.month_hint}</span>
                             )}
                           </div>
                           {tpl.description && (
-                            <div className="mt-1.5 text-xs text-muted-foreground">
+                            <div className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                               {tpl.description}
                             </div>
                           )}
                         </div>
-                        <Badge variant="secondary" className="shrink-0 font-mono">
+                        <Badge variant="secondary" className="shrink-0 font-mono font-bold text-slate-800 dark:text-slate-200">
                           {t("adminTaskTemplates.pointsN", { n: tpl.points })}
                         </Badge>
                         <div className="flex shrink-0 gap-1">

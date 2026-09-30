@@ -37,10 +37,17 @@ def _apply_updates(obj: Base, data: BaseModel) -> None:
 
 
 # ─── Faculty ──────────────────────────────────────────────
-async def list_faculties(db: AsyncSession, offset: int, limit: int) -> tuple[list[Faculty], int]:
-    total = (await db.execute(select(func.count(Faculty.id)))).scalar_one()
+async def list_faculties(
+    db: AsyncSession, offset: int, limit: int, faculty_id: UUID | None = None
+) -> tuple[list[Faculty], int]:
+    count_stmt = select(func.count(Faculty.id))
+    stmt = select(Faculty).order_by(Faculty.name)
+    if faculty_id:
+        count_stmt = count_stmt.where(Faculty.id == faculty_id)
+        stmt = stmt.where(Faculty.id == faculty_id)
+    total = (await db.execute(count_stmt)).scalar_one()
     items = (
-        (await db.execute(select(Faculty).order_by(Faculty.name).offset(offset).limit(limit)))
+        (await db.execute(stmt.offset(offset).limit(limit)))
         .scalars()
         .all()
     )
@@ -249,9 +256,13 @@ async def list_groups(
     direction_id: UUID | None = None,
     academic_year_id: UUID | None = None,
     course: int | None = None,
+    faculty_id: UUID | None = None,
 ) -> tuple[list[Group], int]:
     stmt = select(Group)
     count_stmt = select(func.count(Group.id))
+    if faculty_id:
+        stmt = stmt.join(Direction, Group.direction_id == Direction.id).where(Direction.faculty_id == faculty_id)
+        count_stmt = count_stmt.join(Direction, Group.direction_id == Direction.id).where(Direction.faculty_id == faculty_id)
     if direction_id:
         stmt = stmt.where(Group.direction_id == direction_id)
         count_stmt = count_stmt.where(Group.direction_id == direction_id)

@@ -4,9 +4,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import CurrentUser, RequireAdmin
+from app.api.deps import CurrentUser, RequirePractice
 from app.db.session import SessionDep
-from app.models.enums import AssignmentStatus, Semester
+from app.models.enums import AssignmentStatus, Semester, UserRole
 from app.schemas.common import Paginated
 from app.schemas.practice_assignment import (
     BulkAssignmentResult,
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/practice-assignments", tags=["practice-assignments"]
 @router.get("", response_model=Paginated[PracticeAssignmentRead])
 async def list_assignments(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequirePractice,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     student_id: UUID | None = None,
@@ -38,7 +38,10 @@ async def list_assignments(
     group_id: UUID | None = None,
     status_filter: AssignmentStatus | None = Query(None, alias="status"),
     search: str | None = Query(None, min_length=1, max_length=100),
+    faculty_id: UUID | None = None,
 ) -> Paginated[PracticeAssignmentRead]:
+    if user.role == UserRole.ADMIN and user.faculty_id:
+        faculty_id = user.faculty_id
     offset = (page - 1) * page_size
     items, total = await svc.list_assignments(
         db,
@@ -56,6 +59,7 @@ async def list_assignments(
         group_id=group_id,
         status_filter=status_filter,
         search=search,
+        faculty_id=faculty_id,
     )
     return Paginated(
         items=[PracticeAssignmentRead.model_validate(i) for i in items],
@@ -83,7 +87,7 @@ async def my_assignments(
 
 
 @router.get("/{id_}", response_model=PracticeAssignmentRead)
-async def get_assignment(id_: UUID, db: SessionDep, _: RequireAdmin) -> PracticeAssignmentRead:
+async def get_assignment(id_: UUID, db: SessionDep, _: RequirePractice) -> PracticeAssignmentRead:
     return PracticeAssignmentRead.model_validate(await svc.get_assignment(db, id_))
 
 
@@ -94,7 +98,7 @@ async def get_assignment(id_: UUID, db: SessionDep, _: RequireAdmin) -> Practice
     summary="Yangi biriktirish (bitta talaba)",
 )
 async def create_assignment(
-    data: PracticeAssignmentCreate, db: SessionDep, _: RequireAdmin
+    data: PracticeAssignmentCreate, db: SessionDep, _: RequirePractice
 ) -> PracticeAssignmentRead:
     return PracticeAssignmentRead.model_validate(await svc.create_assignment(db, data))
 
@@ -106,7 +110,7 @@ async def create_assignment(
     summary="Ko'p talabani bir amaliyotga biriktirish (guruh)",
 )
 async def bulk_create(
-    data: PracticeAssignmentBulkCreate, db: SessionDep, _: RequireAdmin
+    data: PracticeAssignmentBulkCreate, db: SessionDep, _: RequirePractice
 ) -> BulkAssignmentResult:
     return await svc.bulk_create_assignments(db, data)
 
@@ -116,11 +120,11 @@ async def update_assignment(
     id_: UUID,
     data: PracticeAssignmentUpdate,
     db: SessionDep,
-    _: RequireAdmin,
+    _: RequirePractice,
 ) -> PracticeAssignmentRead:
     return PracticeAssignmentRead.model_validate(await svc.update_assignment(db, id_, data))
 
 
 @router.delete("/{id_}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_assignment(id_: UUID, db: SessionDep, _: RequireAdmin) -> None:
+async def delete_assignment(id_: UUID, db: SessionDep, _: RequirePractice) -> None:
     await svc.delete_assignment(db, id_)

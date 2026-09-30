@@ -37,8 +37,10 @@ export type OrganizationKind =
   | "mtt"
   | "lyceum"
   | "college"
-  | "company"
   | "university"
+  | "state_organization"
+  | "private_organization"
+  | "company"
   | "other";
 
 export type Paginated<T> = {
@@ -442,6 +444,9 @@ export type Admin = {
   is_active: boolean;
   last_login_at: ISODateTime | null;
   created_at: ISODateTime;
+  faculty_id?: UUID | null;
+  faculty_name?: string | null;
+  permissions?: string[];
 };
 
 export type AdminCreate = {
@@ -453,6 +458,8 @@ export type AdminCreate = {
   last_name: string;
   middle_name?: string | null;
   role?: "admin" | "super_admin";
+  faculty_id?: UUID | null;
+  permissions?: string[];
 };
 
 export type AdminUpdate = {
@@ -463,6 +470,8 @@ export type AdminUpdate = {
   middle_name?: string | null;
   role?: "admin" | "super_admin";
   is_active?: boolean;
+  faculty_id?: UUID | null;
+  permissions?: string[];
 };
 
 // ─── Notifications ───────────────────────────────────────

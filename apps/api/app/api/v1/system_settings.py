@@ -7,7 +7,7 @@
 
 from fastapi import APIRouter
 
-from app.api.deps import RequireAdmin, RequireSuperAdmin
+from app.api.deps import RequireSuperAdmin, RequireSystem
 from app.db.session import SessionDep
 from app.schemas.system_settings import (
     SystemSettingsPublic,
@@ -31,7 +31,7 @@ async def get_public(db: SessionDep) -> SystemSettingsPublic:
 
 
 @router.get("", response_model=SystemSettingsRead)
-async def get_settings(db: SessionDep, _: RequireAdmin) -> SystemSettingsRead:
+async def get_settings(db: SessionDep, _: RequireSystem) -> SystemSettingsRead:
     return SystemSettingsRead.model_validate(await svc.get_settings(db))
 
 

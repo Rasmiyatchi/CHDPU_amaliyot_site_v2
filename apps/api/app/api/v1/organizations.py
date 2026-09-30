@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import RequireAdmin
+from app.api.deps import RequirePartners
 from app.db.session import SessionDep
 from app.models.enums import OrganizationKind
 from app.schemas.common import Paginated
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/organizations", tags=["organizations"])
 @router.get("", response_model=Paginated[OrganizationRead])
 async def list_organizations(
     db: SessionDep,
-    _: RequireAdmin,
+    _: RequirePartners,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     search: str | None = Query(None, min_length=1, max_length=100),
@@ -42,24 +42,24 @@ async def list_organizations(
 
 
 @router.get("/{id_}", response_model=OrganizationRead)
-async def get_organization(id_: UUID, db: SessionDep, _: RequireAdmin) -> OrganizationRead:
+async def get_organization(id_: UUID, db: SessionDep, _: RequirePartners) -> OrganizationRead:
     return OrganizationRead.model_validate(await svc.get_organization(db, id_))
 
 
 @router.post("", response_model=OrganizationRead, status_code=status.HTTP_201_CREATED)
 async def create_organization(
-    data: OrganizationCreate, db: SessionDep, _: RequireAdmin
+    data: OrganizationCreate, db: SessionDep, _: RequirePartners
 ) -> OrganizationRead:
     return OrganizationRead.model_validate(await svc.create_organization(db, data))
 
 
 @router.patch("/{id_}", response_model=OrganizationRead)
 async def update_organization(
-    id_: UUID, data: OrganizationUpdate, db: SessionDep, _: RequireAdmin
+    id_: UUID, data: OrganizationUpdate, db: SessionDep, _: RequirePartners
 ) -> OrganizationRead:
     return OrganizationRead.model_validate(await svc.update_organization(db, id_, data))
 
 
 @router.delete("/{id_}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_organization(id_: UUID, db: SessionDep, _: RequireAdmin) -> None:
+async def delete_organization(id_: UUID, db: SessionDep, _: RequirePartners) -> None:
     await svc.delete_organization(db, id_)

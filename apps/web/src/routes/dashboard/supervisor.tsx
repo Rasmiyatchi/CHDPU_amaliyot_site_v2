@@ -20,7 +20,6 @@ import { OverdueTasksCard } from "@/components/overdue-tasks-card";
 
 import { AttendanceStatusBadge } from "@/components/admin/attendance/attendance-status-badge";
 import { StatCard } from "@/components/admin/stat-card";
-import { NotificationsBell } from "@/components/notifications-bell";
 import { SupervisorReviewPanel } from "@/components/supervisor/review-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -176,28 +175,29 @@ export function SupervisorDashboard() {
   return (
     <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 overflow-x-hidden">
       <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
-        {/* Hero banner */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-4 sm:p-6 text-white shadow-lg dark:from-blue-800 dark:to-indigo-900">
-          <div className="relative flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-              <Users className="h-6 w-6" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-semibold">
-                {t("supervisor.welcome", { name: user?.first_name })}
-              </h2>
-              <p className="mt-0.5 text-sm text-blue-50">
-                {isTasksRoute
-                  ? t("supervisorSupervisorSidebar.nav.tasks")
-                  : isAttendanceRoute
-                    ? t("supervisorSupervisorSidebar.nav.attendance")
-                    : t("supervisor.subtitle")}
-              </p>
-            </div>
-            <div className="shrink-0 [&_button]:text-white [&_button]:hover:bg-white/10">
-              <NotificationsBell />
-            </div>
+        {/* Evolve Dash Welcome Banner */}
+        <section className="dash-welcome">
+          <div>
+            <span>4+2 AMALIYOT RAHBARI</span>
+            <h2>{t("supervisor.welcome", { name: user?.first_name })}</h2>
+            <p>
+              {isTasksRoute
+                ? t("supervisorSupervisorSidebar.nav.tasks")
+                : isAttendanceRoute
+                  ? t("supervisorSupervisorSidebar.nav.attendance")
+                  : t("supervisor.subtitle")}
+            </p>
           </div>
+          <div className="progress-score">
+            <strong>
+              {assignments?.length ?? 0}
+              <small> ta</small>
+            </strong>
+            <span>BIRIKTIRILGAN TALABA</span>
+          </div>
+        </section>
+        <div className="dash-progress mb-6 rounded-full overflow-hidden">
+          <i style={{ width: "100%" }} />
         </div>
 
         {/* Period Selector (Semestr va O'quv yili filtri) */}

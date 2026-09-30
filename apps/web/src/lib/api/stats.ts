@@ -46,7 +46,12 @@ export type PracticeTypeStat = {
 };
 
 export type AdminStats = {
-  students: { total: number; by_status: Record<StudentStatus, number> };
+  students: {
+    total: number;
+    by_status: Record<StudentStatus, number>;
+    assigned?: number;
+    unassigned?: number;
+  };
   assignments: { total: number; by_status: Record<AssignmentStatus, number> };
   practice_types?: PracticeTypeStat[];
   contracts: { total: number; by_status: Record<ContractStatus, number> };

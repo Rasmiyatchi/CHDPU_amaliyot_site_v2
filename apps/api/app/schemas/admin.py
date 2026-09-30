@@ -17,6 +17,8 @@ class AdminCreate(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=100)
     middle_name: str | None = Field(None, max_length=100)
     role: UserRole = Field(UserRole.ADMIN, description="admin yoki super_admin")
+    faculty_id: UUID | None = None
+    permissions: list[str] = Field(default_factory=list)
 
 
 class AdminUpdate(BaseModel):
@@ -27,6 +29,8 @@ class AdminUpdate(BaseModel):
     middle_name: str | None = Field(None, max_length=100)
     role: UserRole | None = None
     is_active: bool | None = None
+    faculty_id: UUID | None = None
+    permissions: list[str] | None = None
 
 
 class AdminRead(BaseModel):
@@ -42,5 +46,8 @@ class AdminRead(BaseModel):
     is_active: bool
     last_login_at: datetime | None
     created_at: datetime
+    faculty_id: UUID | None = None
+    faculty_name: str | None = None
+    permissions: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

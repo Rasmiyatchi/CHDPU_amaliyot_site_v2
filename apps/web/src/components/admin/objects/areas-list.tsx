@@ -136,41 +136,45 @@ export function AreasList() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[45px]">№</TableHead>
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("objectsAreasList.regionHeader")}</TableHead>
-                <TableHead className="w-[100px]">
+                <TableHead className="w-[120px]">
                   {t("objectsAreasList.capacityHeader")}
                 </TableHead>
                 <TableHead className="w-[140px]">{t("objectsAreasList.geoHeader")}</TableHead>
-                <TableHead className="w-[80px]">
+                <TableHead className="w-[90px]">
                   {t("objectsAreasList.statusHeader")}
                 </TableHead>
-                <TableHead className="w-[100px]"></TableHead>
+                <TableHead className="w-[100px] text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                     {t("objectsAreasList.emptyMessage")}
                   </TableCell>
                 </TableRow>
               )}
-              {data.items.map((a) => (
-                <TableRow key={a.id}>
+              {data.items.map((a, idx) => (
+                <TableRow key={a.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {idx + 1}
+                  </TableCell>
                   <TableCell>
-                    <div className="font-medium">{a.name}</div>
+                    <div className="font-medium text-foreground">{a.name}</div>
                     {a.description && (
                       <div className="text-xs text-muted-foreground">{a.description}</div>
                     )}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {a.region}
+                    <div>{a.region}</div>
                     {a.district && (
                       <div className="text-xs text-muted-foreground">{a.district}</div>
                     )}
                   </TableCell>
-                  <TableCell>{a.capacity}</TableCell>
+                  <TableCell className="font-mono text-xs">{a.capacity}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {a.geo_lat && a.geo_lng
                       ? `${Number(a.geo_lat).toFixed(2)}, ${Number(a.geo_lng).toFixed(2)}`
@@ -178,17 +182,22 @@ export function AreasList() {
                   </TableCell>
                   <TableCell>
                     {a.is_active ? (
-                      <Badge variant="success">{t("objectsAreasList.active")}</Badge>
+                      <Badge variant="default" className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-600/20 text-xs">
+                        {t("objectsAreasList.active")}
+                      </Badge>
                     ) : (
-                      <Badge variant="outline">{t("objectsAreasList.inactive")}</Badge>
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        {t("objectsAreasList.inactive")}
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-end gap-1">
                       <Button
                         size="icon"
                         variant="ghost"
                         onClick={() => setEditing(a)}
+                        title={t("common.edit")}
                         aria-label={t("common.edit")}
                       >
                         <Pencil className="h-4 w-4" />
@@ -197,6 +206,7 @@ export function AreasList() {
                         size="icon"
                         variant="ghost"
                         onClick={() => handleDelete(a)}
+                        title={t("common.delete")}
                         aria-label={t("common.delete")}
                         disabled={del.isPending}
                       >

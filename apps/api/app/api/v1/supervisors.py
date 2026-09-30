@@ -14,8 +14,9 @@ from fastapi import (
     status,
 )
 
-from app.api.deps import RequireAdmin, RequireSupervisor
+from app.api.deps import RequireSupervisor, RequireSupervisors
 from app.db.session import SessionDep
+from app.models.enums import UserRole
 from app.schemas.common import CredentialsUpdate, Paginated
 from app.schemas.supervisor import (
     SupervisorBulkDeleteError,
@@ -47,7 +48,7 @@ _IMPORT_MAX_SIZE = 20 * 1024 * 1024
     "/import-template",
     summary="O'qituvchi import uchun namuna Excel shablonini yuklab olish",
 )
-async def supervisors_import_template(_: RequireAdmin) -> Response:
+async def supervisors_import_template(_: RequireSupervisors) -> Response:
     return Response(
         content=build_supervisors_template(),
         media_type=_XLSX_MIME,
@@ -72,7 +73,7 @@ async def supervisors_import_template(_: RequireAdmin) -> Response:
 async def import_supervisors(
     request: Request,
     db: SessionDep,
-    user: RequireAdmin,
+    user: RequireSupervisors,
     file: UploadFile = File(...),  # noqa: B008
 ) -> SupervisorImportResponse:
     filename_lower = (file.filename or "").lower()
@@ -133,7 +134,7 @@ async def my_report_pdf(
 @router.get("", response_model=Paginated[SupervisorRead])
 async def list_supervisors(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequireSupervisors,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     organization_id: UUID | None = None,
@@ -145,6 +146,8 @@ async def list_supervisors(
         description="organization_id bilan: tashkilotga bog'lanmagan supervizorlarni ham qo'shish",
     ),
 ) -> Paginated[SupervisorRead]:
+    if user.role == UserRole.ADMIN and user.faculty_id:
+        faculty_id = user.faculty_id
     offset = (page - 1) * page_size
     items, total = await svc.list_supervisors(
         db,
@@ -165,13 +168,13 @@ async def list_supervisors(
 
 
 @router.get("/{id_}", response_model=SupervisorRead)
-async def get_supervisor(id_: UUID, db: SessionDep, _: RequireAdmin) -> SupervisorRead:
+async def get_supervisor(id_: UUID, db: SessionDep, _: RequireSupervisors) -> SupervisorRead:
     return SupervisorRead.model_validate(await svc.get_supervisor(db, id_))
 
 
 @router.post("", response_model=SupervisorRead, status_code=status.HTTP_201_CREATED)
 async def create_supervisor(
-    data: SupervisorCreate, request: Request, db: SessionDep, user: RequireAdmin
+    data: SupervisorCreate, request: Request, db: SessionDep, user: RequireSupervisors
 ) -> SupervisorRead:
     result = await svc.create_supervisor(db, data)
     await audit.log(
@@ -193,7 +196,7 @@ async def update_supervisor(
     data: SupervisorUpdate,
     request: Request,
     db: SessionDep,
-    user: RequireAdmin,
+    user: RequireSupervisors,
 ) -> SupervisorRead:
     result = await svc.update_supervisor(db, id_, data)
     await audit.log(
@@ -220,7 +223,7 @@ async def update_supervisor_credentials(
     data: CredentialsUpdate,
     request: Request,
     db: SessionDep,
-    user: RequireAdmin,
+    user: RequireSupervisors,
 ) -> SupervisorRead:
     result = await svc.update_credentials(db, id_, data)
     await audit.log(
@@ -245,7 +248,7 @@ async def bulk_delete_supervisors(
     payload: SupervisorBulkDeleteRequest,
     request: Request,
     db: SessionDep,
-    user: RequireAdmin,
+    user: RequireSupervisors,
 ) -> SupervisorBulkDeleteResult:
     deleted = 0
     failed: list[SupervisorBulkDeleteError] = []
@@ -285,7 +288,7 @@ async def bulk_delete_supervisors(
 
 @router.delete("/{id_}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_supervisor(
-    id_: UUID, request: Request, db: SessionDep, user: RequireAdmin
+    id_: UUID, request: Request, db: SessionDep, user: RequireSupervisors
 ) -> None:
     snapshot = await svc.get_supervisor(db, id_)
     await svc.delete_supervisor(db, id_)

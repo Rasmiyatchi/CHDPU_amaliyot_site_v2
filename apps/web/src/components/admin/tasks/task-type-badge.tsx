@@ -40,5 +40,9 @@ export function TaskCategoryBadge({ category }: { category: TaskCategory }) {
 
 export function TaskTypeLabel({ type }: { type: TaskType }) {
   const { t } = useTranslation();
-  return <span className="text-xs text-muted-foreground">{t(TYPE_LABEL_KEY[type])}</span>;
+  return (
+    <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+      {t(TYPE_LABEL_KEY[type])}
+    </span>
+  );
 }

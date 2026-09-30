@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import RequireAdmin
+from app.api.deps import RequireAdmin, require_permission
 from app.db.session import SessionDep
+from app.models.enums import UserRole
 from app.schemas.academic import (
     AcademicYearCreate,
     AcademicYearRead,
@@ -26,19 +27,24 @@ from app.schemas.academic import (
 from app.schemas.common import Paginated
 from app.services import academic as svc
 
-router = APIRouter(prefix="/academic", tags=["academic"])
+router = APIRouter(
+    prefix="/academic",
+    tags=["academic"],
+    dependencies=[Depends(require_permission("structure"))],
+)
 
 
 # ─── Faculty ──────────────────────────────────────────────
 @router.get("/faculties", response_model=Paginated[FacultyRead])
 async def list_faculties(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequireAdmin,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> Paginated[FacultyRead]:
+    faculty_id = user.faculty_id if (user.role == UserRole.ADMIN and user.faculty_id) else None
     offset = (page - 1) * page_size
-    items, total = await svc.list_faculties(db, offset, page_size)
+    items, total = await svc.list_faculties(db, offset, page_size, faculty_id)
     return Paginated(
         items=[FacultyRead.model_validate(i) for i in items],
         total=total,
@@ -68,11 +74,13 @@ async def delete_faculty(id_: UUID, db: SessionDep, _: RequireAdmin) -> None:
 @router.get("/directions", response_model=Paginated[DirectionRead])
 async def list_directions(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequireAdmin,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     faculty_id: UUID | None = None,
 ) -> Paginated[DirectionRead]:
+    if user.role == UserRole.ADMIN and user.faculty_id:
+        faculty_id = user.faculty_id
     offset = (page - 1) * page_size
     items, total = await svc.list_directions(db, offset, page_size, faculty_id)
     return Paginated(
@@ -104,11 +112,13 @@ async def delete_direction(id_: UUID, db: SessionDep, _: RequireAdmin) -> None:
 @router.get("/departments", response_model=Paginated[DepartmentRead])
 async def list_departments(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequireAdmin,
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=200),
     faculty_id: UUID | None = None,
 ) -> Paginated[DepartmentRead]:
+    if user.role == UserRole.ADMIN and user.faculty_id:
+        faculty_id = user.faculty_id
     offset = (page - 1) * page_size
     items, total = await svc.list_departments(db, offset, page_size, faculty_id)
     return Paginated(
@@ -172,16 +182,17 @@ async def delete_academic_year(id_: UUID, db: SessionDep, _: RequireAdmin) -> No
 @router.get("/groups", response_model=Paginated[GroupRead])
 async def list_groups(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequireAdmin,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
     direction_id: UUID | None = None,
     academic_year_id: UUID | None = None,
     course: int | None = Query(None, ge=1, le=5),
 ) -> Paginated[GroupRead]:
+    faculty_id = user.faculty_id if (user.role == UserRole.ADMIN and user.faculty_id) else None
     offset = (page - 1) * page_size
     items, total = await svc.list_groups(
-        db, offset, page_size, direction_id, academic_year_id, course
+        db, offset, page_size, direction_id, academic_year_id, course, faculty_id
     )
     return Paginated(
         items=[GroupRead.model_validate(i) for i in items],

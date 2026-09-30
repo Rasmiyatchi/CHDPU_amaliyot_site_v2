@@ -1,284 +1,311 @@
 import {
   ArrowRight,
-  CalendarCheck,
-  ClipboardList,
-  FileCheck2,
+  ArrowUpRight,
+  Check,
   GraduationCap,
-  LogIn,
-  MapPin,
-  Package,
-  Shield,
+  School,
+  Search,
   ShieldCheck,
-  Sparkles,
-  UserCog,
-  Users,
+  UserRoundCheck,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { DashboardPreview } from "@/components/DashboardPreview";
+import { PracticeSearch } from "@/components/PracticeSearch";
+import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { Button } from "@/components/ui/button";
-import { usePublicSettings } from "@/lib/api/system-settings";
 import { landingPathFor } from "@/lib/routing";
 import { useAuthStore } from "@/stores/auth";
 
-const features = [
-  {
-    icon: CalendarCheck,
-    titleKey: "home.features.geoAttendance.title",
-    descKey: "home.features.geoAttendance.desc",
-    accent: "from-emerald-500/20 to-teal-500/10",
-    iconClass: "text-emerald-600 dark:text-emerald-400",
-  },
-  {
-    icon: FileCheck2,
-    titleKey: "home.features.qrContract.title",
-    descKey: "home.features.qrContract.desc",
-    accent: "from-blue-500/20 to-indigo-500/10",
-    iconClass: "text-blue-600 dark:text-blue-400",
-  },
-  {
-    icon: ClipboardList,
-    titleKey: "home.features.syllabusTasks.title",
-    descKey: "home.features.syllabusTasks.desc",
-    accent: "from-purple-500/20 to-pink-500/10",
-    iconClass: "text-purple-600 dark:text-purple-400",
-  },
-  {
-    icon: Package,
-    titleKey: "home.features.archiveZip.title",
-    descKey: "home.features.archiveZip.desc",
-    accent: "from-amber-500/20 to-orange-500/10",
-    iconClass: "text-amber-600 dark:text-amber-400",
-  },
+const stats = [
+  ["4,000+", "TALABALAR"],
+  ["08", "AMALIYOT TURLARI"],
+  ["43+", "TOPSHIRIQLAR"],
+  ["04", "FOYDALANUVCHI ROLLARI"],
+];
+
+const steps = [
+  ["01", "Profil", "Talaba ma’lumotlari tasdiqlanadi."],
+  ["02", "Amaliyot joyi", "Hamkor maktab bilan biriktiriladi."],
+  ["03", "Topshiriqlar", "Reja asosida vazifalar bajariladi."],
+  ["04", "Davomat", "Amaliyot kunlari qayd etiladi."],
+  ["05", "Natija", "Yakuniy hisobot va baho."],
 ];
 
 const roles = [
   {
-    icon: ShieldCheck,
-    labelKey: "home.roles.superAdmin.label",
-    descKey: "home.roles.superAdmin.desc",
-    color: "border-purple-500/30 bg-purple-500/5",
+    n: "01",
+    t: "TALABA",
+    i: GraduationCap,
+    c: ["Profil", "Topshiriqlar", "Davomat", "Amaliyot holati"],
   },
   {
-    icon: Shield,
-    labelKey: "home.roles.admin.label",
-    descKey: "home.roles.admin.desc",
-    color: "border-indigo-500/30 bg-indigo-500/5",
+    n: "02",
+    t: "AMALIYOT RAHBARI",
+    i: UserRoundCheck,
+    c: ["Talabalarni kuzatish", "Topshiriqlar", "Davomat", "Monitoring"],
   },
   {
-    icon: UserCog,
-    labelKey: "common.supervisor",
-    descKey: "home.roles.supervisor.desc",
-    color: "border-blue-500/30 bg-blue-500/5",
+    n: "03",
+    t: "FAKULTET",
+    i: School,
+    c: ["Guruhlar", "Monitoring", "Statistika", "Hisobot"],
   },
   {
-    icon: GraduationCap,
-    labelKey: "common.student",
-    descKey: "home.roles.student.desc",
-    color: "border-emerald-500/30 bg-emerald-500/5",
+    n: "04",
+    t: "AMALIYOT BO‘LIMI",
+    i: ShieldCheck,
+    c: ["Jarayon nazorati", "Tashkilotlar", "Tahlil", "Boshqaruv"],
   },
 ];
 
 export function Home() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
-  const { data: settings } = usePublicSettings();
-
-  const siteName = settings?.site_name ?? "CHDPU Amaliyot Platformasi";
-  const siteDesc = settings?.site_description;
 
   return (
-    <div className="landing-bg relative min-h-screen overflow-hidden">
-      {/* Floating blobs */}
-      <div className="blob pointer-events-none absolute -left-32 top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-      <div
-        className="blob pointer-events-none absolute -right-20 top-1/3 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl"
-        style={{ animationDelay: "5s" }}
-      />
-      <div
-        className="blob pointer-events-none absolute bottom-20 left-1/3 h-80 w-80 rounded-full bg-purple-500/10 blur-3xl"
-        style={{ animationDelay: "8s" }}
-      />
-
-      {/* Hero */}
-      <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-32">
-        <div className="container mx-auto max-w-5xl px-4 text-center">
-          <div
-            className="fade-in mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border/50 bg-card/50 px-4 py-1.5 text-xs font-medium backdrop-blur-md"
-            style={{ animationDelay: "0.05s" }}
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-muted-foreground">
-              {t("home.badge")}
-            </span>
+    <>
+      <SiteHeader />
+      <main>
+        {/* Hero Section */}
+        <section className="hero">
+          <div className="hero-grid" />
+          <div className="hero-spot" />
+          <div className="container mx-auto px-4 hero-inner">
+            <div className="hero-copy">
+              <div className="eyebrow">
+                <span /> CHDPU · 4+2 AMALIYOT TIZIMI
+              </div>
+              <h1>
+                <span className="hero-number">
+                  <i>4</i>
+                  <b>+</b>
+                  <i>2</i>
+                </span>
+                <span>
+                  DIGITAL
+                  <br />
+                  PRACTICE
+                </span>
+              </h1>
+              <p>
+                Chirchiq davlat pedagogika universiteti talabalari amaliyot
+                jarayonini boshqarish, topshiriqlar va natijalarni nazorat qilish
+                uchun yagona raqamli platforma.
+              </p>
+              <div className="hero-actions">
+                {user ? (
+                  <Button asChild size="lg">
+                    <Link to={landingPathFor(user.role)}>
+                      {t("common.myDashboard", "Kabinetime o'tish")} <ArrowUpRight />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild size="lg">
+                    <Link to="/login">
+                      Platformaga kirish <ArrowUpRight />
+                    </Link>
+                  </Button>
+                )}
+                <Button asChild size="lg" variant="outline">
+                  <Link to="/amaliyot">
+                    Amaliyotni izlash <Search />
+                  </Link>
+                </Button>
+              </div>
+              <div className="hero-note">
+                <span>
+                  <Check /> Xavfsiz kirish
+                </span>
+                <span>
+                  <Check /> Real vaqtda kuzatuv
+                </span>
+              </div>
+            </div>
+            <DashboardPreview />
           </div>
+        </section>
 
-          <h1
-            className="fade-in mb-5 bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl"
-            style={{ animationDelay: "0.1s" }}
-          >
-            {siteName}
-          </h1>
+        {/* Quick Search Band */}
+        <section className="search-band">
+          <div className="container mx-auto px-4 search-card">
+            <div>
+              <span className="section-index">01 / QIDIRUV</span>
+              <h2>Amaliyotingizni toping</h2>
+              <p>Talaba F.I.Sh. yoki shaxsiy amaliyot ID raqami orqali</p>
+            </div>
+            <PracticeSearch compact />
+          </div>
+        </section>
 
-          <p
-            className="fade-in mx-auto mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
-            style={{ animationDelay: "0.2s" }}
-          >
-            {siteDesc || t("home.heroFallbackDesc")}
-          </p>
+        {/* Stats Section */}
+        <section className="stats-section">
+          <div className="container mx-auto px-4">
+            <div className="section-heading">
+              <div>
+                <span className="section-index">02 / NAMUNAVIY KO‘RSATKICHLAR</span>
+                <h2>
+                  AMALIYOT
+                  <br />
+                  <em>PLATFORMASI</em>
+                </h2>
+              </div>
+              <p>
+                Nazariya va real pedagogik tajribani yagona raqamli muhitda
+                birlashtiramiz.
+              </p>
+            </div>
+            <div className="stats-row">
+              {stats.map(([n, l], i) => (
+                <div className="stat" key={l}>
+                  <small>0{i + 1}</small>
+                  <strong>{n}</strong>
+                  <span>{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-          <div
-            className="fade-in flex flex-wrap items-center justify-center gap-3"
-            style={{ animationDelay: "0.3s" }}
-          >
-            {user ? (
-              <Button asChild size="lg" className="gap-2">
-                <Link to={landingPathFor(user.role)}>
-                  {t("home.myDashboard")}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild size="lg" className="gap-2">
-                <Link to="/login">
-                  <LogIn className="h-4 w-4" />
-                  {t("home.login")}
-                </Link>
-              </Button>
-            )}
-            <Button asChild size="lg" variant="outline" className="gap-2">
-              <a href="#features">
-                {t("home.featuresLink")}
-                <ArrowRight className="h-4 w-4" />
+        {/* Journey Timeline */}
+        <section className="journey">
+          <div className="container mx-auto px-4">
+            <span className="section-index light">03 / JARAYON</span>
+            <div className="section-heading dark">
+              <h2>
+                Amaliyot qanday
+                <br />
+                <em>ishlaydi?</em>
+              </h2>
+              <p>
+                Biriktirishdan yakuniy natijagacha — har bir bosqich aniq, shaffof
+                va nazoratda.
+              </p>
+            </div>
+            <div className="timeline">
+              {steps.map((s, i) => (
+                <div className="timeline-step" key={s[0]}>
+                  <div className="timeline-dot">
+                    <span>{i === 0 ? <Check size={15} /> : s[0]}</span>
+                  </div>
+                  <h3>{s[1]}</h3>
+                  <p>{s[2]}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Ecosystem Roles */}
+        <section className="ecosystem">
+          <div className="container mx-auto px-4">
+            <div className="section-heading">
+              <div>
+                <span className="section-index">04 / EKOTIZIM</span>
+                <h2>
+                  Har bir rol uchun
+                  <br />
+                  <em>aniq imkoniyat</em>
+                </h2>
+              </div>
+              <p>Talabadan boshqaruvgacha yagona, bog‘langan akademik ekotizim.</p>
+            </div>
+            <div className="role-grid">
+              {roles.map((r) => (
+                <article className="role-card" key={r.t}>
+                  <div className="role-top">
+                    <span>{r.n}</span>
+                    <r.i />
+                  </div>
+                  <h3>{r.t}</h3>
+                  <ul>
+                    {r.c.map((x) => (
+                      <li key={x}>
+                        <Check size={15} />
+                        {x}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    to="/login"
+                    aria-label={`${r.t} sifatida kirish`}
+                  >
+                    <ArrowUpRight />
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Campus Photo Banner */}
+        <section className="campus-section">
+          <img
+            src="/chdpu-campus.jpg"
+            alt="Chirchiq davlat pedagogika universiteti binosi"
+            onError={(e) => {
+              // Fallback image if needed
+              (e.target as HTMLElement).style.display = "none";
+            }}
+          />
+          <div className="campus-overlay" />
+          <div className="campus-content">
+            <span className="section-index light">
+              CHIRCHIQ DAVLAT PEDAGOGIKA UNIVERSITETI
+            </span>
+            <h2>
+              TA’LIM.
+              <br />
+              TAJRIBA.
+              <br />
+              <em>AMALIYOT.</em>
+            </h2>
+            <p>
+              Kelajak pedagoglarini real maktab muhiti, raqamli nazorat va
+              tajribali ustozlar bilan bog‘laymiz.
+            </p>
+            <Button asChild variant="secondary">
+              <a
+                href="https://cspu.uz/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2"
+              >
+                Universitet haqida <ArrowUpRight />
               </a>
             </Button>
           </div>
+        </section>
 
-          {/* Stats */}
-          <div className="fade-in mt-16 grid grid-cols-2 gap-6 sm:grid-cols-4" style={{ animationDelay: "0.45s" }}>
-            <Stat value="123" label={t("home.stats.activeStudents")} />
-            <Stat value="8" label={t("home.stats.practiceTypes")} />
-            <Stat value="43" label={t("home.stats.syllabusTasks")} />
-            <Stat value="4" label={t("home.stats.userRoles")} />
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="relative py-20">
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="mb-14 text-center">
-            <h2 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              {t("home.featuresTitle")}
-            </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              {t("home.featuresSubtitle")}
-            </p>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((f, i) => (
-              <div
-                key={f.titleKey}
-                className="fade-in group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-6 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
-                style={{ animationDelay: `${0.1 + i * 0.05}s` }}
-              >
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${f.accent} opacity-0 transition-opacity group-hover:opacity-100`}
-                />
-                <div className="relative">
-                  <div
-                    className={`mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-background/80 ${f.iconClass}`}
-                  >
-                    <f.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mb-2 font-semibold">{t(f.titleKey)}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {t(f.descKey)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Roles */}
-      <section className="relative py-20">
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="mb-14 text-center">
-            <h2 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              {t("home.rolesTitle")}
-            </h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              {t("home.rolesSubtitle")}
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {roles.map((r, i) => (
-              <div
-                key={r.labelKey}
-                className={`fade-in rounded-xl border p-6 transition-all hover:-translate-y-1 ${r.color}`}
-                style={{ animationDelay: `${0.1 + i * 0.07}s` }}
-              >
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-background/80">
-                  <r.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 font-semibold">{t(r.labelKey)}</h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {t(r.descKey)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="relative py-20">
-        <div className="container mx-auto max-w-4xl px-4">
-          <div className="overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/10 via-card to-purple-500/10 p-10 text-center sm:p-16">
-            <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/15">
-              <Users className="h-6 w-6 text-primary" />
+        {/* CTA Band */}
+        <section className="cta-band">
+          <div className="container mx-auto px-4 cta-inner">
+            <div>
+              <span className="section-index">RAQAMLI AMALIYOT</span>
+              <h2>
+                Amaliyot jarayonini
+                <br />
+                bugun boshlang.
+              </h2>
             </div>
-            <h2 className="mb-3 text-2xl font-bold tracking-tight sm:text-3xl">
-              {t("home.ctaTitle")}
-            </h2>
-            <p className="mx-auto mb-6 max-w-md text-muted-foreground">
-              {t("home.ctaSubtitle")}
-            </p>
-            <Button asChild size="lg" className="gap-2">
-              <Link to={user ? landingPathFor(user.role) : "/login"}>
-                {user ? t("home.ctaGoDashboard") : t("home.login")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            {user ? (
+              <Button asChild size="lg">
+                <Link to={landingPathFor(user.role)}>
+                  Kabinetime o'tish <ArrowRight />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg">
+                <Link to="/login">
+                  Platformaga kirish <ArrowRight />
+                </Link>
+              </Button>
+            )}
           </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="relative border-t border-border/50 py-8">
-        <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 text-xs text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5" />
-            {t("home.footerLocation")}
-          </div>
-          <div>{t("home.footerCopyright", { year: new Date().getFullYear() })}</div>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl border border-border/50 bg-card/50 px-4 py-5 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-primary to-purple-500 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
-        {value}
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
-    </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

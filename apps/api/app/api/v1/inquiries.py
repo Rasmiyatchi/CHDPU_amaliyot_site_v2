@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import CurrentUser, RequireAdmin, RequireStudent
+from app.api.deps import CurrentUser, RequireInquiries, RequireStudent
 from app.db.session import SessionDep
 from app.schemas.inquiry import (
     InquiryCreate,
@@ -34,7 +34,7 @@ async def my_inquiries(db: SessionDep, user: RequireStudent) -> list[InquiryRead
 @router.get("", response_model=list[InquiryRead])
 async def list_inquiries(
     db: SessionDep,
-    _: RequireAdmin,
+    _: RequireInquiries,
     resolved: bool | None = Query(None),
 ) -> list[InquiryRead]:
     return [InquiryRead.model_validate(r) for r in await svc.list_all(db, resolved=resolved)]
@@ -42,7 +42,7 @@ async def list_inquiries(
 
 @router.post("/{id_}/resolve", response_model=InquiryRead)
 async def resolve_inquiry(
-    id_: UUID, db: SessionDep, _: RequireAdmin, resolved: bool = Query(True)
+    id_: UUID, db: SessionDep, _: RequireInquiries, resolved: bool = Query(True)
 ) -> InquiryRead:
     return InquiryRead.model_validate(await svc.set_resolved(db, id_, resolved))
 

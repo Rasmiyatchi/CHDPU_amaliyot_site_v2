@@ -16,6 +16,7 @@ export type StudentFilters = {
   academic_year_id?: UUID;
   status?: StudentStatus;
   search?: string;
+  has_assignment?: boolean;
 };
 
 export const studentKeys = {
@@ -35,6 +36,7 @@ function toQueryString(filters: StudentFilters, page: number, pageSize: number):
   if (filters.course !== undefined) qs.set("course", String(filters.course));
   if (filters.academic_year_id) qs.set("academic_year_id", filters.academic_year_id);
   if (filters.status) qs.set("status", filters.status);
+  if (filters.has_assignment !== undefined) qs.set("has_assignment", String(filters.has_assignment));
   if (filters.search) qs.set("search", filters.search);
   return qs.toString();
 }

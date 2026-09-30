@@ -294,6 +294,7 @@ async def list_assignments(
     group_id: UUID | None = None,
     status_filter: AssignmentStatus | None = None,
     search: str | None = None,
+    faculty_id: UUID | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     base = _base_read_select()
     count_stmt = (
@@ -301,9 +302,12 @@ async def list_assignments(
         .join(Student, Student.id == PracticeAssignment.student_id)
         .join(User, User.id == Student.user_id)
         .outerjoin(Group, Group.id == PracticeAssignment.group_id)
+        .outerjoin(Direction, Direction.id == Group.direction_id)
     )
 
     def apply(stmt: Any) -> Any:
+        if faculty_id:
+            stmt = stmt.where(Direction.faculty_id == faculty_id)
         if student_id:
             stmt = stmt.where(PracticeAssignment.student_id == student_id)
         if practice_type_id:

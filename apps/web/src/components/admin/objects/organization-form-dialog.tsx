@@ -43,8 +43,10 @@ const KIND_OPTIONS: { value: OrganizationKind; labelKey: string }[] = [
   { value: "mtt", labelKey: "objectsOrganizationFormDialog.kinds.mtt" },
   { value: "lyceum", labelKey: "objectsOrganizationFormDialog.kinds.lyceum" },
   { value: "college", labelKey: "objectsOrganizationFormDialog.kinds.college" },
-  { value: "company", labelKey: "objectsOrganizationFormDialog.kinds.company" },
   { value: "university", labelKey: "objectsOrganizationFormDialog.kinds.university" },
+  { value: "state_organization", labelKey: "objectsOrganizationFormDialog.kinds.state_organization" },
+  { value: "private_organization", labelKey: "objectsOrganizationFormDialog.kinds.private_organization" },
+  { value: "company", labelKey: "objectsOrganizationFormDialog.kinds.company" },
   { value: "other", labelKey: "objectsOrganizationFormDialog.kinds.other" },
 ];
 
@@ -52,7 +54,7 @@ const makeOrgSchema = (t: TFunction) =>
   z.object({
     name: z.string().min(2, t("objectsOrganizationFormDialog.validation.nameMin")).max(200),
     legal_name: z.string().max(300).optional().or(z.literal("")),
-    kind: z.enum(["school", "mtt", "lyceum", "college", "company", "university", "other"]),
+    kind: z.enum(["school", "mtt", "lyceum", "college", "university", "state_organization", "private_organization", "company", "other"]),
     director_full_name: z
       .string()
       .min(3, t("objectsOrganizationFormDialog.validation.directorFullName"))

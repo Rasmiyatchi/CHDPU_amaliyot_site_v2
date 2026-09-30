@@ -1,11 +1,12 @@
 import { HTTPError } from "ky";
-import { Loader2, Save, ShieldCheck } from "lucide-react";
+import { Check, Layers, Loader2, Save, School, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { CredentialsSection } from "@/components/admin/credentials-section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,12 +26,57 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useFaculties } from "@/lib/api/academic";
 import {
   useCreateAdmin,
   useUpdateAdmin,
   useUpdateAdminCredentials,
 } from "@/lib/api/admins";
 import type { Admin } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
+
+export const PERMISSION_MODULES = [
+  {
+    id: "structure",
+    name: "Akademik tuzilma",
+    desc: "Fakultetlar, kafedralar, yo'nalishlar, guruhlar va talabalar boshqaruvi",
+  },
+  {
+    id: "practice",
+    name: "Amaliyot jarayonlari",
+    desc: "Amaliyot turlari, talabalarni biriktirish, davomat va yakuniy baholar",
+  },
+  {
+    id: "contracts",
+    name: "Shartnomalar va arizalar",
+    desc: "Talabalarning amaliyot arizalari va 3 tomonlama shartnomalarni tasdiqlash",
+  },
+  {
+    id: "supervisors",
+    name: "Rahbarlar (Supervizorlar)",
+    desc: "Universitet va tashkilot rahbarlarini biriktirish va boshqarish",
+  },
+  {
+    id: "partners",
+    name: "Hamkorlar va Tashkilotlar",
+    desc: "Maktablar, MTT, kasb-hunar maktablari va korxonalar bazasi",
+  },
+  {
+    id: "monitoring",
+    name: "Monitoring markazi",
+    desc: "Amaliyot jarayonlarini kuzatish, xaritalar va statistik ko'rsatkichlar",
+  },
+  {
+    id: "inquiries",
+    name: "Murojaatlar",
+    desc: "Talabalar va rahbarlardan kelgan murojaat va arizalar bilan ishlash",
+  },
+  {
+    id: "system",
+    name: "Tizim sozlamalari",
+    desc: "Tizim konfiguratsiyasi, integratsiyalar va audit loglarini ko'rish",
+  },
+];
 
 type Props = {
   open: boolean;
@@ -43,6 +89,9 @@ export function AdminFormDialog({ open, existing, onClose }: Props) {
   const create = useCreateAdmin();
   const update = useUpdateAdmin();
   const updateCreds = useUpdateAdminCredentials();
+  const { data: facultiesData } = useFaculties(1, 100);
+  const faculties = facultiesData?.items ?? [];
+
   const isEdit = !!existing;
 
   const [username, setUsername] = useState("");
@@ -54,6 +103,8 @@ export function AdminFormDialog({ open, existing, onClose }: Props) {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"admin" | "super_admin">("admin");
   const [isActive, setIsActive] = useState(true);
+  const [facultyId, setFacultyId] = useState<string>("ALL");
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   useEffect(() => {
     if (open && existing) {
@@ -66,6 +117,8 @@ export function AdminFormDialog({ open, existing, onClose }: Props) {
       setPhone(existing.phone ?? "");
       setRole(existing.role);
       setIsActive(existing.is_active);
+      setFacultyId(existing.faculty_id || "ALL");
+      setPermissions(existing.permissions || []);
     } else if (open) {
       setUsername("");
       setPassword("");
@@ -76,8 +129,25 @@ export function AdminFormDialog({ open, existing, onClose }: Props) {
       setPhone("");
       setRole("admin");
       setIsActive(true);
+      setFacultyId("ALL");
+      // Standart holatda barcha amaliy modullar tanlangan bo'ladi
+      setPermissions(PERMISSION_MODULES.map((m) => m.id));
     }
   }, [open, existing]);
+
+  const togglePermission = (id: string) => {
+    setPermissions((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+    );
+  };
+
+  const selectAllPermissions = () => {
+    setPermissions(PERMISSION_MODULES.map((m) => m.id));
+  };
+
+  const clearAllPermissions = () => {
+    setPermissions([]);
+  };
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -92,6 +162,8 @@ export function AdminFormDialog({ open, existing, onClose }: Props) {
       email: email.trim() || null,
       phone: phone.trim() || null,
       role,
+      faculty_id: role === "admin" && facultyId !== "ALL" ? facultyId : null,
+      permissions: role === "admin" ? permissions : [],
     };
 
     try {
@@ -241,15 +313,136 @@ export function AdminFormDialog({ open, existing, onClose }: Props) {
           )}
         </div>
 
-        {role === "super_admin" && !isEdit && (
-          <Alert>
-            <AlertDescription>
+        {role === "super_admin" ? (
+          <Alert className="border-amber-500/20 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-950/20">
+            <AlertDescription className="text-xs text-amber-900 dark:text-amber-200">
               <Trans
                 i18nKey="adminsAdminFormDialog.superAdminWarning"
                 components={[<strong key="0" />]}
               />
+              <span className="block mt-1 font-medium">
+                Super administrator barcha fakultetlar va modullarga cheklovsiz to'liq kirish huquqiga ega.
+              </span>
             </AlertDescription>
           </Alert>
+        ) : (
+          <>
+            <Separator />
+
+            {/* Fakultet biriktirish (Scoping) */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <School className="h-4 w-4 text-primary" />
+                <Label htmlFor="adm-faculty" className="text-sm font-semibold">
+                  Fakultet bo'yicha biriktirish (Data Scoping)
+                </Label>
+              </div>
+              <Select value={facultyId} onValueChange={setFacultyId}>
+                <SelectTrigger id="adm-faculty" className="w-full">
+                  <SelectValue placeholder="Fakultetni tanlang" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="ALL">
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      Barcha fakultetlar (Umumiy administrator)
+                    </span>
+                  </SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name} {f.code ? `(${f.code})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {facultyId === "ALL" ? (
+                  "Ushbu administrator barcha fakultet talabalari va guruhlarini ko'ra oladi."
+                ) : (
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                    DIQQAT: Ushbu administrator faqat tanlangan fakultetga tegishli talabalar, guruhlar va ma'lumotlarni ko'ra oladi va boshqaradi.
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Funksional ruxsatlar (Permissions) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <Label className="text-sm font-semibold">
+                    Funksional ruxsatlar (Modul darajasida)
+                  </Label>
+                  <Badge variant="secondary" className="text-[11px] font-mono">
+                    {permissions.length} / {PERMISSION_MODULES.length}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={selectAllPermissions}
+                  >
+                    Barchasini tanlash
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={clearAllPermissions}
+                  >
+                    Tozalash
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {PERMISSION_MODULES.map((mod) => {
+                  const checked = permissions.includes(mod.id);
+                  return (
+                    <div
+                      key={mod.id}
+                      onClick={() => togglePermission(mod.id)}
+                      className={cn(
+                        "flex items-start gap-2.5 rounded-lg border p-2.5 cursor-pointer transition-all",
+                        checked
+                          ? "border-primary/50 bg-primary/5 dark:bg-primary/10 shadow-xs"
+                          : "border-border/60 hover:border-border hover:bg-muted/40",
+                      )}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {checked ? (
+                          <div className="flex h-4 w-4 items-center justify-center rounded bg-primary text-primary-foreground">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <div className="h-4 w-4 rounded border border-muted-foreground/40" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-semibold text-foreground">
+                          {mod.name}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
+                          {mod.desc}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {permissions.length === 0 && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  Ogohlantirish: Hech qanday ruxsat belgilanmadi. Admin faqat boshqaruv panelining bosh sahifasini ko'ra oladi.
+                </p>
+              )}
+            </div>
+          </>
         )}
 
         {isEdit && existing && (

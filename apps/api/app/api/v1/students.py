@@ -3,11 +3,11 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.api.deps import RequireAdmin
+from app.api.deps import RequireAdmin, require_permission
 from app.db.session import SessionDep
-from app.models.enums import StudentStatus
+from app.models.enums import StudentStatus, UserRole
 from app.schemas.common import CredentialsUpdate, Paginated
 from app.schemas.student import (
     StudentBulkDeleteError,
@@ -26,13 +26,26 @@ from app.services.student import reset_device as svc_reset_device
 from app.services.student import update_credentials as svc_update_credentials
 from app.services.student import update_student as svc_update_student
 
-router = APIRouter(prefix="/students", tags=["students"])
+router = APIRouter(
+    prefix="/students",
+    tags=["students"],
+    dependencies=[Depends(require_permission("structure"))],
+)
+
+
+def _check_faculty_access(user: Any, student: dict[str, Any], action: str = "ko'rish") -> None:
+    if user.role == UserRole.ADMIN and user.faculty_id:
+        if student.get("faculty_id") and student.get("faculty_id") != user.faculty_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Sizda boshqa fakultet talabasini {action} huquqi yo'q",
+            )
 
 
 @router.get("", response_model=Paginated[StudentRead])
 async def list_students(
     db: SessionDep,
-    _: RequireAdmin,
+    user: RequireAdmin,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     faculty_id: UUID | None = None,
@@ -41,8 +54,11 @@ async def list_students(
     course: int | None = Query(None, ge=1, le=5),
     academic_year_id: UUID | None = None,
     status_filter: StudentStatus | None = Query(None, alias="status"),
+    has_assignment: bool | None = Query(None),
     search: str | None = Query(None, min_length=1, max_length=100),
 ) -> Paginated[StudentRead]:
+    if user.role == UserRole.ADMIN and user.faculty_id:
+        faculty_id = user.faculty_id
     offset = (page - 1) * page_size
     items, total = await svc_list_students(
         db,
@@ -55,6 +71,7 @@ async def list_students(
         academic_year_id,
         status_filter,
         search,
+        has_assignment,
     )
     return Paginated(
         items=[StudentRead.model_validate(i) for i in items],
@@ -65,8 +82,10 @@ async def list_students(
 
 
 @router.get("/{id_}", response_model=StudentRead)
-async def get_student(id_: UUID, db: SessionDep, _: RequireAdmin) -> StudentRead:
-    return StudentRead.model_validate(await svc_get_student(db, id_))
+async def get_student(id_: UUID, db: SessionDep, user: RequireAdmin) -> StudentRead:
+    student = await svc_get_student(db, id_)
+    _check_faculty_access(user, student, "ko'rish")
+    return StudentRead.model_validate(student)
 
 
 @router.post(
@@ -108,13 +127,12 @@ async def update_student(
     db: SessionDep,
     user: RequireAdmin,
 ) -> StudentRead:
+    before = await svc_get_student(db, id_)
+    _check_faculty_access(user, before, "tahrirlash")
     # Guruh o'zgarishi tarixga ta'sir qiladi — oldingi qiymatni auditga yozib qo'yamiz,
     # keyin "qachon qaysi guruhdan qaysi guruhga o'tgan"ni tiklab bo'lsin.
     payload = data.model_dump(exclude_unset=True)
-    old_group_id = None
-    if "group_id" in payload:
-        before = await svc_get_student(db, id_)
-        old_group_id = before.get("group_id")
+    old_group_id = before.get("group_id") if "group_id" in payload else None
 
     result = await svc_update_student(db, id_, data)
     full_name = result.get("full_name", "")
@@ -158,6 +176,7 @@ async def bulk_delete_students(
         full_name: str | None = None
         try:
             student = await svc_get_student(db, sid)
+            _check_faculty_access(user, student, "o'chirish")
             full_name = student.get("full_name")
             await svc_delete_student(db, sid)
             await audit.log(
@@ -197,6 +216,7 @@ async def delete_student(
 ) -> None:
     # Snapshot for audit before delete
     student = await svc_get_student(db, id_)
+    _check_faculty_access(user, student, "o'chirish")
     full_name = student.get("full_name", "")
     await svc_delete_student(db, id_)
     await audit.log(
@@ -217,8 +237,10 @@ async def delete_student(
     summary="Admin: talaba login/parolini yangilash",
 )
 async def update_student_credentials(
-    id_: UUID, data: CredentialsUpdate, db: SessionDep, _: RequireAdmin
+    id_: UUID, data: CredentialsUpdate, db: SessionDep, user: RequireAdmin
 ) -> StudentRead:
+    student = await svc_get_student(db, id_)
+    _check_faculty_access(user, student, "tahrirlash")
     return StudentRead.model_validate(await svc_update_credentials(db, id_, data))
 
 
@@ -228,6 +250,8 @@ async def update_student_credentials(
     summary="Admin: talabaning bog'langan qurilmasini o'chirish",
 )
 async def reset_student_device(
-    id_: UUID, db: SessionDep, _: RequireAdmin
+    id_: UUID, db: SessionDep, user: RequireAdmin
 ) -> StudentRead:
+    student = await svc_get_student(db, id_)
+    _check_faculty_access(user, student, "tahrirlash")
     return StudentRead.model_validate(await svc_reset_device(db, id_))

@@ -13,11 +13,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
+from app.models.academic import Faculty
 from app.models.enums import UserRole
 from app.models.user import User
 
 
-def _to_dict(u: User) -> dict[str, Any]:
+def _to_dict(u: User, faculty_name: str | None = None) -> dict[str, Any]:
     return {
         "id": u.id,
         "username": u.username,
@@ -31,6 +32,9 @@ def _to_dict(u: User) -> dict[str, Any]:
         "is_active": u.is_active,
         "last_login_at": u.last_login_at,
         "created_at": u.created_at,
+        "faculty_id": u.faculty_id,
+        "faculty_name": faculty_name,
+        "permissions": u.permissions or [],
     }
 
 
@@ -42,7 +46,11 @@ async def list_admins(
     search: str | None = None,
     is_active: bool | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    base = select(User).where(User.role.in_([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    base = (
+        select(User, Faculty.name.label("faculty_name"))
+        .outerjoin(Faculty, Faculty.id == User.faculty_id)
+        .where(User.role.in_([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    )
     count_stmt = select(func.count(User.id)).where(
         User.role.in_([UserRole.ADMIN, UserRole.SUPER_ADMIN])
     )
@@ -70,17 +78,24 @@ async def list_admins(
                 .limit(limit)
             )
         )
-        .scalars()
         .all()
     )
-    return [_to_dict(u) for u in rows], total
+    return [_to_dict(u, fname) for u, fname in rows], total
 
 
 async def get_admin(db: AsyncSession, admin_id: UUID) -> dict[str, Any]:
-    user = await db.get(User, admin_id)
-    if not user or user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+    stmt = (
+        select(User, Faculty.name.label("faculty_name"))
+        .outerjoin(Faculty, Faculty.id == User.faculty_id)
+        .where(User.id == admin_id)
+    )
+    row = (await db.execute(stmt)).first()
+    if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Admin topilmadi")
-    return _to_dict(user)
+    user, faculty_name = row
+    if user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Admin topilmadi")
+    return _to_dict(user, faculty_name)
 
 
 async def create_admin(db: AsyncSession, data: BaseModel) -> dict[str, Any]:
@@ -101,6 +116,8 @@ async def create_admin(db: AsyncSession, data: BaseModel) -> dict[str, Any]:
         middle_name=payload.get("middle_name") or None,
         role=role,
         is_active=True,
+        faculty_id=payload.get("faculty_id") if role == UserRole.ADMIN else None,
+        permissions=payload.get("permissions") or [] if role == UserRole.ADMIN else [],
     )
     db.add(user)
     try:
@@ -112,7 +129,13 @@ async def create_admin(db: AsyncSession, data: BaseModel) -> dict[str, Any]:
             "Bu username yoki email allaqachon mavjud",
         ) from e
     await db.refresh(user)
-    return _to_dict(user)
+
+    faculty_name = None
+    if user.faculty_id:
+        fac = await db.get(Faculty, user.faculty_id)
+        faculty_name = fac.name if fac else None
+
+    return _to_dict(user, faculty_name)
 
 
 async def update_admin(
@@ -135,13 +158,24 @@ async def update_admin(
     for key, value in payload.items():
         setattr(user, key, value)
 
+    # Super admin uchun faculty_id doim None
+    if user.role == UserRole.SUPER_ADMIN:
+        user.faculty_id = None
+        user.permissions = []
+
     try:
         await db.commit()
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Email band") from e
     await db.refresh(user)
-    return _to_dict(user)
+
+    faculty_name = None
+    if user.faculty_id:
+        fac = await db.get(Faculty, user.faculty_id)
+        faculty_name = fac.name if fac else None
+
+    return _to_dict(user, faculty_name)
 
 
 async def delete_admin(

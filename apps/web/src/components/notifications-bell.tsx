@@ -118,10 +118,10 @@ export function NotificationsBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative h-8 w-8 rounded-lg text-slate-600 hover:bg-slate-200/70 transition-all dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label={t("notificationsBell.title")}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-4 w-4" />
           {unread > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
               {unread > 99 ? "99+" : unread}

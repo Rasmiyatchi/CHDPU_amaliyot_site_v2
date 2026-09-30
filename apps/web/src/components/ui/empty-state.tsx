@@ -96,7 +96,10 @@ export function EmptyState({
       </div>
 
       <div
-        className={cn("font-semibold tracking-tight", compact ? "text-sm" : "text-base")}
+        className={cn(
+          "font-semibold tracking-tight text-slate-900 dark:text-slate-100",
+          compact ? "text-sm" : "text-base",
+        )}
       >
         {title ?? t("uiEmptyState.noData")}
       </div>
@@ -104,7 +107,7 @@ export function EmptyState({
       {description && (
         <div
           className={cn(
-            "max-w-sm leading-relaxed text-muted-foreground",
+            "max-w-sm leading-relaxed text-slate-600 dark:text-slate-400",
             compact ? "text-xs" : "text-sm",
           )}
         >

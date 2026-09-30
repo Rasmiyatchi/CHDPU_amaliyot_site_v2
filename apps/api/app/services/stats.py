@@ -138,6 +138,18 @@ async def admin_overview(db: AsyncSession) -> dict[str, Any]:
         students_by_status[s.value] = c
     students_total = sum(students_by_status.values())
 
+    # Biriktirilgan va biriktirilmagan talabalar soni
+    assigned_students_count = (
+        await db.execute(
+            select(func.count(func.distinct(PracticeAssignment.student_id))).where(
+                PracticeAssignment.status.in_(
+                    [AssignmentStatus.DRAFT, AssignmentStatus.ACTIVE, AssignmentStatus.COMPLETED]
+                )
+            )
+        )
+    ).scalar_one() or 0
+    unassigned_students_count = max(0, students_total - assigned_students_count)
+
     # Assignments
     asn_rows = (
         await db.execute(
@@ -303,6 +315,8 @@ async def admin_overview(db: AsyncSession) -> dict[str, Any]:
         "students": {
             "total": students_total,
             "by_status": students_by_status,
+            "assigned": assigned_students_count,
+            "unassigned": unassigned_students_count,
         },
         "assignments": {
             "total": sum(assignments_by_status.values()),

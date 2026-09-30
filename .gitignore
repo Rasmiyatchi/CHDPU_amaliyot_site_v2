@@ -9,6 +9,7 @@ out/
 .next/
 .vite/
 .turbo/
+*.tsbuildinfo
 
 # ─── Python ───────────────────────────────────────────────
 __pycache__/

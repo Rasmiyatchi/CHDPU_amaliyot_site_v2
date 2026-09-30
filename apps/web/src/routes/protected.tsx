@@ -1,17 +1,22 @@
-import { Loader2 } from "lucide-react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
+import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 
+import { Button } from "@/components/ui/button";
 import { useBootstrap } from "@/hooks/use-bootstrap";
 import { useAuthStore, type UserRole } from "@/stores/auth";
 
-type Props = { allowed?: UserRole[] };
+type Props = {
+  allowed?: UserRole[];
+  permission?: string;
+  allowedPermissions?: string[];
+};
 
 /**
- * Faqat auth'langan foydalanuvchilar uchun route wrapper.
- * `allowed` berilmasa — barcha rollar kiradi.
- * Berilsa — faqat ro'yxatdagi rollar.
+ * Faqat auth'langan va ruxsati bor foydalanuvchilar uchun route wrapper.
+ * `allowed`: Ruxsat etilgan rollar
+ * `permission` / `allowedPermissions`: Admin uchun modul ruxsati (RBAC)
  */
-export function Protected({ allowed }: Props) {
+export function Protected({ allowed, permission, allowedPermissions }: Props) {
   const { isReady } = useBootstrap();
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
@@ -30,6 +35,45 @@ export function Protected({ allowed }: Props) {
 
   if (allowed && !allowed.includes(user.role)) {
     return <Navigate to="/" replace />;
+  }
+
+  // Modul darajasidagi ruxsatlarni tekshirish (Admin roli uchun)
+  if (user.role === "admin") {
+    const required = allowedPermissions || (permission ? [permission] : []);
+    if (required.length > 0) {
+      const userPerms = user.permissions || [];
+      const hasPerm = required.some((p) => {
+        if (userPerms.includes(p)) return true;
+        // Shartnomalarga kirish huquqi 'practice' ruxsati orqali ham beriladi
+        if (p === "contracts" && userPerms.includes("practice")) return true;
+        return false;
+      });
+
+      if (!hasPerm) {
+        return (
+          <div className="container flex min-h-[65vh] flex-col items-center justify-center py-12 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive mb-4 shadow-xs">
+              <ShieldAlert className="h-8 w-8" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Ruxsat etilmagan (403 Forbidden)
+            </h1>
+            <p className="mt-2.5 max-w-md text-sm text-muted-foreground leading-relaxed">
+              Sizning administrator akkauntingizga ushbu moduldan foydalanish huquqi biriktirilmagan. 
+              Qo'shimcha ruxsat olish uchun tizim bosh administratori (Super Admin) ga murojaat qiling.
+            </p>
+            <div className="mt-6 flex items-center gap-3">
+              <Button asChild variant="default">
+                <Link to="/admin">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Bosh sahifaga qaytish
+                </Link>
+              </Button>
+            </div>
+          </div>
+        );
+      }
+    }
   }
 
   return <Outlet />;

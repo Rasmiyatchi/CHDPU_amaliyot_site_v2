@@ -1,6 +1,7 @@
 import { Download, KeyRound, Loader2, Plus, Trash2, Upload, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { HemisImportDialog } from "@/components/admin/students/hemis-import-dialog";
@@ -15,7 +16,18 @@ import type { Student, UUID } from "@/lib/api/types";
 
 export function StudentsPage() {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<StudentFilters>({});
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<StudentFilters>(() => {
+    const hasAsn = searchParams.get("has_assignment");
+    return hasAsn !== null ? { has_assignment: hasAsn === "true" } : {};
+  });
+
+  useEffect(() => {
+    const hasAsn = searchParams.get("has_assignment");
+    if (hasAsn !== null) {
+      setFilters((prev) => ({ ...prev, has_assignment: hasAsn === "true" }));
+    }
+  }, [searchParams]);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Student | null>(null);
   const [importOpen, setImportOpen] = useState(false);

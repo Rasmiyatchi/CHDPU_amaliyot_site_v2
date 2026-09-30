@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 
-from app.api.deps import CurrentUser, RequireAdmin
+from app.api.deps import CurrentUser, RequireContracts
 from app.db.session import SessionDep
 from app.models.enums import ContractStatus
 from app.schemas.common import Paginated
@@ -35,7 +35,7 @@ MAX_SCAN_SIZE = 10 * 1024 * 1024  # 10 MB
 @router.get("", response_model=Paginated[ContractRead])
 async def list_contracts(
     db: SessionDep,
-    _: RequireAdmin,
+    _: RequireContracts,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     organization_id: UUID | None = None,
@@ -64,7 +64,7 @@ async def list_contracts(
 
 
 @router.get("/{id_}", response_model=ContractRead)
-async def get_contract(id_: UUID, db: SessionDep, _: RequireAdmin) -> ContractRead:
+async def get_contract(id_: UUID, db: SessionDep, _: RequireContracts) -> ContractRead:
     return ContractRead.model_validate(await svc.get_contract(db, id_))
 
 
@@ -75,13 +75,13 @@ async def create_contract(data: ContractCreate, db: SessionDep, user: CurrentUse
 
 @router.patch("/{id_}", response_model=ContractRead)
 async def update_contract(
-    id_: UUID, data: ContractUpdate, db: SessionDep, _: RequireAdmin
+    id_: UUID, data: ContractUpdate, db: SessionDep, _: RequireContracts
 ) -> ContractRead:
     return ContractRead.model_validate(await svc.update_contract(db, id_, data))
 
 
 @router.post("/{id_}/generate", response_model=ContractRead)
-async def generate_pdf(id_: UUID, db: SessionDep, _: RequireAdmin) -> ContractRead:
+async def generate_pdf(id_: UUID, db: SessionDep, _: RequireContracts) -> ContractRead:
     """PDF + QR generatsiya. Status DRAFT → GENERATED."""
     return ContractRead.model_validate(await svc.generate_pdf(db, id_))
 
@@ -158,7 +158,7 @@ async def download_pdf(id_: UUID, db: SessionDep, user: CurrentUser) -> FileResp
 async def upload_scan(
     id_: UUID,
     db: SessionDep,
-    _: RequireAdmin,
+    _: RequireContracts,
     file: UploadFile = File(...),  # noqa: B008
 ) -> ContractRead:
     """Imzolangan skan yuklash. Status GENERATED → ACTIVE."""
@@ -221,14 +221,14 @@ async def download_scan(id_: UUID, db: SessionDep, user: CurrentUser) -> FileRes
 
 @router.post("/{id_}/revoke", response_model=ContractRead)
 async def revoke_contract(
-    id_: UUID, data: ContractRevoke, db: SessionDep, _: RequireAdmin
+    id_: UUID, data: ContractRevoke, db: SessionDep, _: RequireContracts
 ) -> ContractRead:
     return ContractRead.model_validate(await svc.revoke_contract(db, id_, data))
 
 
 @router.post("/{id_}/archive", response_model=ContractRead)
 async def archive_contract(
-    id_: UUID, db: SessionDep, _: RequireAdmin
+    id_: UUID, db: SessionDep, _: RequireContracts
 ) -> ContractRead:
     """Shartnomani arxivga o'tkazish (status -> EXPIRED)."""
     return ContractRead.model_validate(await svc.archive_contract(db, id_))
@@ -236,14 +236,14 @@ async def archive_contract(
 
 @router.post("/{id_}/unarchive", response_model=ContractRead)
 async def unarchive_contract(
-    id_: UUID, db: SessionDep, _: RequireAdmin
+    id_: UUID, db: SessionDep, _: RequireContracts
 ) -> ContractRead:
     """Shartnomani arxivdan chiqarish (status -> ACTIVE/GENERATED/DRAFT)."""
     return ContractRead.model_validate(await svc.unarchive_contract(db, id_))
 
 
 @router.delete("/{id_}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_contract(id_: UUID, db: SessionDep, _: RequireAdmin) -> None:
+async def delete_contract(id_: UUID, db: SessionDep, _: RequireContracts) -> None:
     await svc.delete_contract(db, id_)
 
 

@@ -84,3 +84,46 @@ RequireSupervisorOrAdmin = Annotated[
     User, Depends(require_role([UserRole.SUPERVISOR, UserRole.ADMIN, UserRole.SUPER_ADMIN]))
 ]
 RequireStudent = Annotated[User, Depends(require_role([UserRole.STUDENT]))]
+
+
+def require_permission(
+    permission: str,
+) -> Callable[[User], Coroutine[Any, Any, User]]:
+    """Admin uchun modul huquqini (permission) tekshiruvchi dependency.
+
+    - super_admin har doim to'liq cheklovsiz ruxsatga ega.
+    - admin uchun:
+      agar user.permissions ichida permission bo'lmasa -> 403 Forbidden.
+      maxsus holat: agar permission "contracts" bo'lsa va user "practice" huquqiga ega bo'lsa -> ruxsat beriladi.
+    - boshqa rollar uchun -> 403 Forbidden.
+    """
+
+    async def _checker(user: CurrentUser) -> User:
+        if user.role == UserRole.SUPER_ADMIN:
+            return user
+        if user.role != UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Ushbu amal faqat administratorlar uchun",
+            )
+        perms = user.permissions or []
+        if permission not in perms:
+            if permission == "contracts" and "practice" in perms:
+                return user
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Sizda ushbu modulga kirish huquqi yo'q ({permission})",
+            )
+        return user
+
+    return _checker
+
+
+RequireStructure = Annotated[User, Depends(require_permission("structure"))]
+RequirePractice = Annotated[User, Depends(require_permission("practice"))]
+RequireContracts = Annotated[User, Depends(require_permission("contracts"))]
+RequireSupervisors = Annotated[User, Depends(require_permission("supervisors"))]
+RequirePartners = Annotated[User, Depends(require_permission("partners"))]
+RequireMonitoring = Annotated[User, Depends(require_permission("monitoring"))]
+RequireInquiries = Annotated[User, Depends(require_permission("inquiries"))]
+RequireSystem = Annotated[User, Depends(require_permission("system"))]

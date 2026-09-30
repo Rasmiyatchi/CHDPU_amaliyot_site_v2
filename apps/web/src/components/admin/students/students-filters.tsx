@@ -50,7 +50,8 @@ export function StudentsFilters({ filters, onChange }: Props) {
     !!filters.group_id ||
     filters.course !== undefined ||
     !!filters.academic_year_id ||
-    !!filters.status;
+    !!filters.status ||
+    filters.has_assignment !== undefined;
 
   const set = (patch: Partial<StudentFilters>) => onChange({ ...filters, ...patch });
   const clear = () => {
@@ -197,6 +198,35 @@ export function StudentsFilters({ filters, onChange }: Props) {
           </SelectItem>
           <SelectItem value="expelled">
             {t("studentsStudentsFilters.statusExpelled")}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={
+          filters.has_assignment === undefined
+            ? ALL_VALUE
+            : filters.has_assignment
+            ? "assigned"
+            : "unassigned"
+        }
+        onValueChange={(v) =>
+          set({
+            has_assignment:
+              v === ALL_VALUE ? undefined : v === "assigned" ? true : false,
+          })
+        }
+      >
+        <SelectTrigger className="w-[170px]">
+          <SelectValue placeholder="Amaliyot holati" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_VALUE}>Barcha talabalar</SelectItem>
+          <SelectItem value="unassigned" className="text-amber-600 dark:text-amber-400 font-medium">
+            Biriktirilmagan
+          </SelectItem>
+          <SelectItem value="assigned" className="text-emerald-600 dark:text-emerald-400">
+            Biriktirilgan
           </SelectItem>
         </SelectContent>
       </Select>

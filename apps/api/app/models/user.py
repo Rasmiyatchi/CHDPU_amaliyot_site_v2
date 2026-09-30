@@ -5,8 +5,9 @@ Profile detallari (Student, Supervisor) alohida jadvallarga ajratiladi keyingi b
 """
 
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import ARRAY, Boolean, DateTime, ForeignKey, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -55,6 +56,20 @@ class User(UUIDMixin, TimestampMixin, Base):
     )
     device_bound_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+    # Admin scoping & permissions
+    faculty_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("faculties.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Fakultet bo'yicha cheklov",
+    )
+    permissions: Mapped[list[str]] = mapped_column(
+        ARRAY(String(64)),
+        default=list,
+        server_default="{}",
+        comment="Admin funksional ruxsatlari",
     )
 
     # Profile (umumiy maydonlar — rol-specific detallari Student/Supervisor da)

@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   ScrollText,
@@ -90,37 +89,41 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
     <TooltipProvider delayDuration={150}>
       <aside
         className={cn(
-          "h-screen flex-col border-r border-border bg-card transition-[width] duration-200",
-          // Mobilda sidebar kontent joyini yeb qo'yardi — endi drawer ichida chiqadi
+          "h-screen flex-col border-r border-slate-200 bg-white text-slate-800 transition-[width] duration-200 select-none dark:border-slate-800 dark:bg-[#0f172a] dark:text-slate-200",
           inSheet ? "flex w-64 border-r-0" : "hidden md:flex",
           !inSheet && (collapsed ? "w-16" : "w-64"),
         )}
       >
         <div
           className={cn(
-            "flex h-14 items-center border-b border-border",
-            collapsed ? "justify-center px-2" : "gap-2 px-4",
+            "flex h-16 items-center border-b border-slate-200/90 dark:border-slate-800/80",
+            collapsed ? "justify-center px-2" : "gap-3 px-4",
           )}
         >
-          <GraduationCap className="h-5 w-5 shrink-0 text-primary" />
+          <img src="/favicon.png" alt="CHDPU" className="h-8 w-8 shrink-0 object-contain rounded" />
           {!collapsed && (
-            <span className="truncate font-semibold tracking-tight">
-              {t("supervisorSupervisorSidebar.title")}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="truncate font-extrabold text-sm text-slate-900 tracking-tight dark:text-white">
+                CHDPU AMALIYOT
+              </span>
+              <span className="text-[9px] font-bold text-indigo-600 tracking-wider dark:text-indigo-400">
+                AMALIYOT RAHBARI
+              </span>
+            </div>
           )}
         </div>
 
-        <nav className={cn("flex-1 overflow-y-auto", collapsed ? "p-2" : "p-3")}>
+        <nav className={cn("flex-1 overflow-y-auto custom-scrollbar", collapsed ? "p-2" : "p-3")}>
           {navSections.map((section, secIdx) => (
             <div
               key={secIdx}
               className={cn(
                 "space-y-0.5",
-                secIdx > 0 && (collapsed ? "mt-2 border-t border-border pt-2" : "mt-3"),
+                secIdx > 0 && (collapsed ? "mt-2 border-t border-slate-200 pt-2 dark:border-slate-800" : "mt-3"),
               )}
             >
               {section.labelKey && !collapsed && (
-                <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {t(section.labelKey)}
                 </div>
               )}
@@ -132,16 +135,27 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
                     end={end}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center rounded-md text-sm font-medium transition-colors",
+                        "flex items-center rounded-lg text-sm font-medium transition-colors group",
                         collapsed ? "h-10 w-10 justify-center" : "gap-3 px-3 py-2",
                         isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          ? "bg-indigo-50 text-indigo-700 font-semibold border-l-2 border-indigo-600 shadow-xs dark:bg-indigo-600/20 dark:text-white dark:border-indigo-400 dark:shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-100",
                       )
                     }
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span className="truncate">{t(labelKey)}</span>}
+                    {({ isActive }) => (
+                      <>
+                        <Icon
+                          className={cn(
+                            "h-4 w-4 shrink-0 transition-colors",
+                            isActive
+                              ? "text-indigo-600 dark:text-indigo-400"
+                              : "text-slate-400 group-hover:text-slate-600 dark:text-slate-400 dark:group-hover:text-slate-200",
+                          )}
+                        />
+                        {!collapsed && <span className="truncate">{t(labelKey)}</span>}
+                      </>
+                    )}
                   </NavLink>
                 );
 
@@ -149,7 +163,9 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
                 return (
                   <Tooltip key={to}>
                     <TooltipTrigger asChild>{link}</TooltipTrigger>
-                    <TooltipContent side="right">{t(labelKey)}</TooltipContent>
+                    <TooltipContent side="right" className="bg-slate-900 border-slate-700 text-white">
+                      {t(labelKey)}
+                    </TooltipContent>
                   </Tooltip>
                 );
               })}
@@ -157,7 +173,7 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
           ))}
         </nav>
 
-        <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3")}>
+        <div className={cn("border-t border-slate-200 dark:border-slate-800", collapsed ? "p-2" : "p-3")}>
           <div
             className={cn(
               "mb-3 flex justify-center gap-2",
@@ -168,14 +184,14 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
-          <Separator className="my-2" />
+          <Separator className="my-2 bg-slate-200 dark:bg-slate-800" />
           {collapsed ? (
             <div className="flex flex-col items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setProfileOpen(true)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary transition-opacity hover:opacity-80"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700 dark:bg-indigo-600/20 dark:text-indigo-300 transition-opacity hover:opacity-80"
                     title={t("supervisorSupervisorSidebar.myProfile")}
                   >
                     {user?.avatar_url ? (
@@ -195,6 +211,7 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
                     variant="ghost"
                     size="icon"
                     onClick={handleLogout}
+                    className="text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                     aria-label={t("supervisorSupervisorSidebar.logout")}
                   >
                     <LogOut className="h-4 w-4" />
@@ -207,7 +224,7 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setProfileOpen(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary transition-opacity hover:opacity-80"
+                className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700 dark:bg-indigo-600/20 dark:text-indigo-300 transition-opacity hover:opacity-80"
                 title={t("supervisorSupervisorSidebar.myProfile")}
               >
                 {user?.avatar_url ? (
@@ -220,10 +237,10 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
                 onClick={() => setProfileOpen(true)}
                 className="flex-1 overflow-hidden text-left transition-opacity hover:opacity-80"
               >
-                <div className="truncate text-sm font-medium">
+                <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
                   {user?.full_name ?? "—"}
                 </div>
-                <div className="truncate text-xs text-muted-foreground">
+                <div className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {t("common.supervisor")}
                 </div>
               </button>
@@ -231,6 +248,7 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
+                className="text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 aria-label={t("supervisorSupervisorSidebar.logout")}
                 title={t("supervisorSupervisorSidebar.logout")}
               >
@@ -242,7 +260,7 @@ export function SupervisorSidebar({ inSheet = false }: { inSheet?: boolean } = {
           {!inSheet && (
             <button
               onClick={() => setCollapsed((c) => !c)}
-              className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-md text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-md text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               aria-label={
                 collapsed
                   ? t("supervisorSupervisorSidebar.expand")

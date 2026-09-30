@@ -82,6 +82,7 @@ async def list_students(
     academic_year_id: UUID | None = None,
     status_filter: StudentStatus | None = None,
     search: str | None = None,
+    has_assignment: bool | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     base = _student_base_select()
 
@@ -107,6 +108,22 @@ async def list_students(
             stmt = stmt.where(Group.academic_year_id == academic_year_id)
         if status_filter:
             stmt = stmt.where(Student.status == status_filter)
+        if has_assignment is not None:
+            asn_subq = (
+                select(1)
+                .select_from(PracticeAssignment)
+                .where(
+                    PracticeAssignment.student_id == Student.id,
+                    PracticeAssignment.status.in_(
+                        [AssignmentStatus.DRAFT, AssignmentStatus.ACTIVE, AssignmentStatus.COMPLETED]
+                    ),
+                )
+                .exists()
+            )
+            if has_assignment:
+                stmt = stmt.where(asn_subq)
+            else:
+                stmt = stmt.where(~asn_subq)
         if search:
             clean_search = (
                 search.replace("'", "")

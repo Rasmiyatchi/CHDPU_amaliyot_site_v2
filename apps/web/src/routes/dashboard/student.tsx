@@ -1,4 +1,4 @@
-import { CalendarDays, GraduationCap, Loader2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, GraduationCap, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { AttendanceStatusBadge } from "@/components/admin/attendance/attendance-status-badge";
@@ -10,7 +10,6 @@ import { CheckInButton } from "@/components/student/check-in-button";
 import { StudentDocumentsCard } from "@/components/student/documents-card";
 import { FinalReportCard } from "@/components/student/final-report-card";
 import { StudentInquiryCard } from "@/components/student/inquiry-card";
-import { NotificationsBell } from "@/components/notifications-bell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { dateLocale } from "@/i18n";
@@ -29,33 +28,79 @@ export function StudentDashboard() {
 
   const { data: today } = useTodayStatus(activeAssignment?.id ?? null);
 
+  const progressPercent = activeAssignment
+    ? Math.min(
+        100,
+        Math.max(
+          10,
+          Math.round(
+            ((Date.now() - new Date(activeAssignment.start_date).getTime()) /
+              (new Date(activeAssignment.end_date).getTime() -
+                new Date(activeAssignment.start_date).getTime())) *
+              100,
+          ) || 35,
+        ),
+      )
+    : 0;
+
   return (
     <main className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 overflow-x-hidden">
       <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
-        {/* Hero banner */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 sm:p-6 text-white shadow-lg dark:from-emerald-700 dark:to-teal-900">
-          <div className="relative flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-              <GraduationCap className="h-6 w-6" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-semibold">
-                {t("student.welcome", { name: user?.first_name })}
-              </h2>
-              <p className="mt-0.5 text-sm text-emerald-50">
-                {activeAssignment
-                  ? `${activeAssignment.practice_type_name} · ${
-                      activeAssignment.organization_name ??
-                      activeAssignment.area_name
-                    }`
-                  : t("student.notAssigned")}
-              </p>
-            </div>
-            <div className="shrink-0 [&_button]:text-white [&_button]:hover:bg-white/10">
-              <NotificationsBell />
-            </div>
+        {/* Evolve Dash Welcome Banner */}
+        <section className="dash-welcome">
+          <div>
+            <span>4+2 PEDAGOGIK AMALIYOT</span>
+            <h2>{t("student.welcome", { name: user?.first_name })}</h2>
+            <p>
+              {activeAssignment
+                ? `${activeAssignment.practice_type_name} · ${
+                    activeAssignment.organization_name ??
+                    activeAssignment.area_name
+                  }`
+                : t("student.notAssigned")}
+            </p>
           </div>
+          <div className="progress-score">
+            <strong>
+              {activeAssignment ? progressPercent : 0}
+              <small>%</small>
+            </strong>
+            <span>{activeAssignment ? "JARAYONDA" : "BOSQICHDA"}</span>
+          </div>
+        </section>
+        <div className="dash-progress mb-6 rounded-full overflow-hidden">
+          <i style={{ width: `${activeAssignment ? progressPercent : 0}%` }} />
         </div>
+
+        {activeAssignment && (
+          <article className="dash-card status-card">
+            <div className="card-title">
+              <div>
+                <span>AMALIYOT HOLATI</span>
+                <h3>Joriy bosqich</h3>
+              </div>
+              <GraduationCap className="h-5 w-5 text-indigo-500" />
+            </div>
+            <div className="status-steps">
+              <div className="complete">
+                <i><CheckCircle2 className="h-4 w-4" /></i>
+                <span>Profil<h4>Tasdiqlangan</h4></span>
+              </div>
+              <div className="complete">
+                <i><CheckCircle2 className="h-4 w-4" /></i>
+                <span>Amaliyot joyi<h4>{activeAssignment.organization_name ?? activeAssignment.area_name ?? "Taqsimlangan"}</h4></span>
+              </div>
+              <div className="current">
+                <i>03</i>
+                <span>Topshiriqlar<h4>Jarayonda</h4></span>
+              </div>
+              <div>
+                <i>04</i>
+                <span>Natija<h4>Kutilmoqda</h4></span>
+              </div>
+            </div>
+          </article>
+        )}
 
         {assignmentsPending && (
           <div className="flex h-32 items-center justify-center">

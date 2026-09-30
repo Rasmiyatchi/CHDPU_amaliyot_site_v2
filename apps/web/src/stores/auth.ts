@@ -16,6 +16,8 @@ export type User = {
   is_active: boolean;
   last_login_at: string | null;
   must_change_password?: boolean;
+  faculty_id?: string | null;
+  permissions?: string[];
 };
 
 type AuthState = {

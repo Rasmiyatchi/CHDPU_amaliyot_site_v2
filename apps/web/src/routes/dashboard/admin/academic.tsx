@@ -1,5 +1,6 @@
 import { School } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 
 import { AcademicYearList } from "@/components/admin/academic/academic-year-list";
 import { DepartmentList } from "@/components/admin/academic/department-list";
@@ -8,8 +9,23 @@ import { FacultyList } from "@/components/admin/academic/faculty-list";
 import { GroupList } from "@/components/admin/academic/group-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const VALID_TABS = ["faculties", "departments", "directions", "groups", "academic-years"] as const;
+type AcademicTab = typeof VALID_TABS[number];
+
 export function AcademicPage() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as AcademicTab | null;
+  const currentTab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : "faculties";
+
+  const handleTabChange = (value: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", value);
+      return next;
+    }, { replace: true });
+  };
+
   return (
     <div className="container max-w-6xl py-8">
       <div className="mb-6 flex items-center gap-3">
@@ -24,7 +40,7 @@ export function AcademicPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="faculties">
+      <Tabs value={currentTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="faculties">{t("adminAcademic.tabs.faculties")}</TabsTrigger>
           <TabsTrigger value="departments">{t("adminAcademic.tabs.departments")}</TabsTrigger>
