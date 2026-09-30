@@ -69,7 +69,12 @@ COPY --from=builder /app/alembic ./alembic
 COPY --from=builder /app/alembic.ini ./alembic.ini
 
 # Storage dir for uploads/PDFs/templates (volume-mountable)
-RUN mkdir -p /app/storage/uploads /app/storage/contracts /app/storage/contract_templates && \
+RUN mkdir -p /app/storage/uploads /app/storage/contracts /app/storage/contract_templates
+
+# Entrypoint script with automated migrations and db check
+COPY infra/docker/entrypoint.sh /app/entrypoint.sh
+RUN sed -i 's/\r$//' /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh && \
     chown -R app:app /app
 
 USER app
@@ -78,5 +83,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8000/api/v1/health || exit 1
 
-# Run migrations on boot, then start uvicorn
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=*"]
+ENTRYPOINT ["/app/entrypoint.sh"]
